@@ -49,19 +49,20 @@ export default function ChronoSelect() {
   const inactiveTimerId = useRef<NodeJS.Timeout>();
   const countdownIntervalId = useRef<NodeJS.Timeout>();
   const preCountdownTimerId = useRef<NodeJS.Timeout>();
-  const touchIdCounter = useRef(0);
-
+  
   const isMouseDown = useRef(false);
-  const mouseId = useRef<number | null>(null);
+  const MOUSE_IDENTIFIER = -1; // Use a constant identifier for the mouse
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
 
+  // Load magic circle image
   useEffect(() => {
     const img = new Image();
     img.src = MAGIC_CIRCLE_URL;
     img.onload = () => setMagicCircleImg(img);
   }, []);
 
+  // Reset game state
   const resetGame = useCallback(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -74,12 +75,12 @@ export default function ChronoSelect() {
     setTouches(new Map());
     setGameState('IDLE');
     setShowInactivePrompt(false);
-    touchIdCounter.current = 0;
     if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     if (inactiveTimerId.current) clearTimeout(inactiveTimerId.current);
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
   }, []);
 
+  // Animation loop
   const animate = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -135,150 +136,8 @@ export default function ChronoSelect() {
 
     animationFrameId.current = requestAnimationFrame(animate);
   }, [magicCircleImg, gameState, countdown]);
-
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    e.preventDefault();
-    if (gameState === 'RESULT') {
-        resetGame();
-        return;
-    }
-    
-    clearTimeout(inactiveTimerId.current);
-    setShowInactivePrompt(false);
-
-    setTouches(currentTouches => {
-      const newTouches = new Map(currentTouches);
-      const existingHues = Array.from(newTouches.values()).map(t => t.hue);
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        if (newTouches.size >= MAX_TOUCHES) break;
-        
-        const newHue = getDistinctHue(existingHues);
-        existingHues.push(newHue);
-
-        newTouches.set(touch.identifier, {
-          id: touch.identifier,
-          x: touch.clientX,
-          y: touch.clientY,
-          isWinner: false,
-          isLoser: false,
-          team: null,
-          hue: newHue,
-          rotation: Math.random() * Math.PI * 2,
-          rotationSpeed: INITIAL_ROTATION_SPEED,
-          opacity: 1,
-          size: CIRCLE_SIZE,
-        });
-      }
-      if (newTouches.size > 0) setGameState('WAITING');
-      return newTouches;
-    });
-  }, [gameState, resetGame]);
-
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    e.preventDefault();
-    setTouches(currentTouches => {
-      const newTouches = new Map(currentTouches);
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        const existingTouch = newTouches.get(touch.identifier);
-        if (existingTouch) {
-          newTouches.set(touch.identifier, { ...existingTouch, x: touch.clientX, y: touch.clientY });
-        }
-      }
-      return newTouches;
-    });
-  }, []);
-
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    e.preventDefault();
-    if (gameState === 'RESULT') return;
-    
-    setTouches(currentTouches => {
-      const newTouches = new Map(currentTouches);
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        newTouches.delete(touch.identifier);
-      }
-      if (newTouches.size === 0) setGameState('IDLE');
-      return newTouches;
-    });
-  }, [gameState]);
   
-  const handleMouseDown = useCallback((e: MouseEvent) => {
-    e.preventDefault();
-    if (e.button !== 0) return; 
-
-    if (gameState === 'RESULT') {
-      resetGame();
-      return;
-    }
-    
-    isMouseDown.current = true;
-    const id = touchIdCounter.current++;
-    mouseId.current = id;
-
-    clearTimeout(inactiveTimerId.current);
-    setShowInactivePrompt(false);
-
-    setTouches(currentTouches => {
-      if (currentTouches.size >= MAX_TOUCHES) return currentTouches;
-
-      const newTouches = new Map(currentTouches);
-      const existingHues = Array.from(newTouches.values()).map(t => t.hue);
-      const newHue = getDistinctHue(existingHues);
-
-      newTouches.set(id, {
-          id: id,
-          x: e.clientX,
-          y: e.clientY,
-          isWinner: false,
-          isLoser: false,
-          team: null,
-          hue: newHue,
-          rotation: Math.random() * Math.PI * 2,
-          rotationSpeed: INITIAL_ROTATION_SPEED,
-          opacity: 1,
-          size: CIRCLE_SIZE,
-      });
-      
-      if (newTouches.size > 0) setGameState('WAITING');
-      return newTouches;
-    });
-  }, [gameState, resetGame]);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-      if (!isMouseDown.current || mouseId.current === null) return;
-
-      setTouches(currentTouches => {
-          const newTouches = new Map(currentTouches);
-          const touch = newTouches.get(mouseId.current!);
-          if (touch) {
-              newTouches.set(mouseId.current!, { ...touch, x: e.clientX, y: e.clientY });
-          }
-          return newTouches;
-      });
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-      if (!isMouseDown.current || mouseId.current === null) return;
-      
-      isMouseDown.current = false;
-      
-      setTouches(currentTouches => {
-          const newTouches = new Map(currentTouches);
-          newTouches.delete(mouseId.current!);
-          if (newTouches.size === 0) setGameState('IDLE');
-          return newTouches;
-      });
-      mouseId.current = null;
-  }, []);
-
-  const handleContextMenu = useCallback((e: MouseEvent) => {
-    e.preventDefault();
-    if(touches.size > 0) resetGame();
-  }, [resetGame, touches.size]);
-
+  // Resize canvas and start animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -289,36 +148,113 @@ export default function ChronoSelect() {
     }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-
-    // Touch events
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: false });
-    window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     
-    // Mouse events
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('contextmenu', handleContextMenu);
-
     animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('contextmenu', handleContextMenu);
-      
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [animate, handleContextMenu, handleMouseDown, handleMouseMove, handleMouseUp, handleTouchEnd, handleTouchMove, handleTouchStart]);
+  }, [animate]);
 
+  // --- Unified Pointer Event Logic ---
+  const handlePointerDown = useCallback((x: number, y: number, id: number) => {
+    if (gameState === 'RESULT') {
+        resetGame();
+        return;
+    }
+
+    clearTimeout(inactiveTimerId.current);
+    setShowInactivePrompt(false);
+
+    setTouches(currentTouches => {
+        if (currentTouches.size >= MAX_TOUCHES) return currentTouches;
+        
+        const newTouches = new Map(currentTouches);
+        const existingHues = Array.from(newTouches.values()).map(t => t.hue);
+        const newHue = getDistinctHue(existingHues);
+        
+        newTouches.set(id, {
+            id, x, y,
+            isWinner: false, isLoser: false, team: null, hue: newHue,
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: INITIAL_ROTATION_SPEED,
+            opacity: 1, size: CIRCLE_SIZE,
+        });
+
+        if (newTouches.size > 0) setGameState('WAITING');
+        return newTouches;
+    });
+  }, [gameState, resetGame]);
+
+  const handlePointerMove = useCallback((x: number, y: number, id: number) => {
+    setTouches(currentTouches => {
+      const newTouches = new Map(currentTouches);
+      const existingTouch = newTouches.get(id);
+      if (existingTouch) {
+        newTouches.set(id, { ...existingTouch, x, y });
+      }
+      return newTouches;
+    });
+  }, []);
+
+  const handlePointerUp = useCallback((id: number) => {
+    if (gameState === 'RESULT') return;
+    setTouches(currentTouches => {
+      const newTouches = new Map(currentTouches);
+      newTouches.delete(id);
+      if (newTouches.size === 0) setGameState('IDLE');
+      return newTouches;
+    });
+  }, [gameState]);
+
+  // --- React Event Handlers ---
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.button !== 0) return;
+    isMouseDown.current = true;
+    handlePointerDown(e.clientX, e.clientY, MOUSE_IDENTIFIER);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isMouseDown.current) return;
+    handlePointerMove(e.clientX, e.clientY, MOUSE_IDENTIFIER);
+  };
+  
+  const handleMouseUp = () => {
+    if (!isMouseDown.current) return;
+    isMouseDown.current = false;
+    handlePointerUp(MOUSE_IDENTIFIER);
+  };
+  
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    for (const touch of Array.from(e.changedTouches)) {
+      handlePointerDown(touch.clientX, touch.clientY, touch.identifier);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    for (const touch of Array.from(e.changedTouches)) {
+      handlePointerMove(touch.clientX, touch.clientY, touch.identifier);
+    }
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    for (const touch of Array.from(e.changedTouches)) {
+      handlePointerUp(touch.identifier);
+    }
+  };
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if(touches.size > 0) resetGame();
+  }, [resetGame, touches.size]);
+
+
+  // --- Game Logic useEffects ---
   const touchCount = touches.size;
   useEffect(() => {
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
@@ -401,7 +337,6 @@ export default function ChronoSelect() {
 
       setTouches(current => {
         const newTouches = new Map(current);
-
         newTouches.forEach((touch, id) => {
             const isWinner = !isTeamMode && touch.id === winner?.id;
             const team = isTeamMode ? (teams?.A.some(t => t.id === id) ? 'A' : 'B') : null;
@@ -433,22 +368,33 @@ export default function ChronoSelect() {
   }, [gameState]);
 
   return (
-    <div className="relative h-full w-full bg-black">
-      <canvas ref={canvasRef} className="absolute inset-0" />
-      <div className="absolute top-4 right-4 flex items-center space-x-3 z-10">
-        <Label htmlFor="team-mode" className="text-primary font-headline">
-          Split into 2 Teams
-        </Label>
-        <Switch id="team-mode" checked={isTeamMode} onCheckedChange={setIsTeamMode} disabled={gameState !== 'IDLE' && gameState !== 'WAITING'} />
-      </div>
-
-      {showInactivePrompt && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h1 className="text-4xl md:text-5xl font-headline text-primary">
-            Tag Your Finger
-          </h1>
+    <div 
+        className="relative h-full w-full bg-black cursor-none touch-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onContextMenu={handleContextMenu}
+    >
+        <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+        <div className="absolute top-4 right-4 flex items-center space-x-3 z-10 pointer-events-auto">
+            <Label htmlFor="team-mode" className="text-primary font-headline">
+                Split into 2 Teams
+            </Label>
+            <Switch id="team-mode" checked={isTeamMode} onCheckedChange={setIsTeamMode} disabled={gameState !== 'IDLE' && gameState !== 'WAITING'} />
         </div>
-      )}
+
+        {showInactivePrompt && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <h1 className="text-4xl md:text-5xl font-headline text-primary">
+                    Tag Your Finger
+                </h1>
+            </div>
+        )}
     </div>
   );
 }
