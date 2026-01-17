@@ -2,16 +2,8 @@
   "name": "ChronoSelect",
   "short_name": "ChronoSelect",
   "description": "Who goes first? Let fate decide.",
-  "icons": [
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
-  ],
   "start_url": "/",
-  "display": "fullscreen",
-  "orientation": "portrait",
+  "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000"
 }

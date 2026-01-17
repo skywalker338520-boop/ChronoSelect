@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import ServiceWorkerRegistrar from '@/components/service-worker-registrar';
 
 export const metadata: Metadata = {
   title: 'ChronoSelect',
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="font-body antialiased" suppressHydrationWarning={true}>
         {children}
         <Toaster />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
