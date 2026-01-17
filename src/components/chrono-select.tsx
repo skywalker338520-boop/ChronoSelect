@@ -430,11 +430,6 @@ export default function ChronoSelect() {
     }
   }, [gameState]);
 
-  const getWinnerText = () => {
-    if (isTeamMode) return "TEAMS";
-    return "WINNER";
-  }
-
   return (
     <div className="relative h-full w-full bg-black">
       <canvas ref={canvasRef} className="absolute inset-0" />
@@ -450,23 +445,6 @@ export default function ChronoSelect() {
           <h1 className="text-4xl md:text-5xl font-headline text-primary">
             {isTouchDevice ? "Tag your finger" : "Click to add a player"}
           </h1>
-        </div>
-      )}
-
-      {gameState === 'COUNTDOWN' && countdown > 0 && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h1 className="text-9xl font-bold font-headline text-primary">
-            {countdown}
-          </h1>
-        </div>
-      )}
-
-      {gameState === 'RESULT' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <h1 className="text-7xl md:text-9xl font-bold font-headline text-primary">
-                {getWinnerText()}!
-            </h1>
-            <p className="text-xl md:text-2xl mt-4 font-headline text-primary/80">Click to reset</p>
         </div>
       )}
     </div>
