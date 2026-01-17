@@ -1,32 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { TouchPoint, Particle } from '@/lib/types';
+import type { TouchPoint } from '@/lib/types';
 import { useSound } from '@/hooks/use-sound';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 36;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 5;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
-const TRAIL_LENGTH = 180;
 
-const createParticle = (touchX: number, touchY: number, index: number, total: number): Particle => {
-  const angle = (index / total) * (Math.PI * 2);
-  const radius = Math.random() * 40 + 20;
-  return {
-    x: touchX,
-    y: touchY,
-    radius: radius,
-    angle: angle,
-    speed: (Math.random() * 0.00221 + 0.001105) * 2.5,
-    size: 1,
-    history: [],
-    opacity: 1,
-  };
-};
+const MAGIC_CIRCLE_URL = 'https://firebasestorage.googleapis.com/v0/b/genkit-llm-tools.appspot.com/o/image-prompt-images%2F1718012076046_magic_circle.png?alt=media&token=143b62b3-5b8c-45a8-9b88-29402969b768';
+const CIRCLE_SIZE = 250;
+const INITIAL_ROTATION_SPEED = 0.005;
 
 const getDistinctHue = (existingHues: number[]): number => {
     const MIN_HUE_DIFFERENCE = 30; // degrees
@@ -56,6 +43,7 @@ export default function ChronoSelect() {
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState<boolean | undefined>(undefined);
+  const [magicCircleImg, setMagicCircleImg] = useState<HTMLImageElement | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
@@ -65,6 +53,12 @@ export default function ChronoSelect() {
   const touchIdCounter = useRef(0);
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = MAGIC_CIRCLE_URL;
+    img.onload = () => setMagicCircleImg(img);
+  }, []);
 
   const resetGame = useCallback(() => {
     const canvas = canvasRef.current;
@@ -92,73 +86,53 @@ export default function ChronoSelect() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    if (!magicCircleImg) {
+        animationFrameId.current = requestAnimationFrame(animate);
+        return;
+    }
+
     setTouches(currentTouches => {
       const newTouches = new Map(currentTouches);
 
       newTouches.forEach((touch, id) => {
-        const updatedParticles: Particle[] = [];
+        let updatedTouch = { ...touch };
         
-        touch.particles.forEach(p => {
-          let particle = { ...p, history: [...p.history] };
-
-          particle.history.push({ x: particle.x, y: particle.y });
-          if (particle.history.length > TRAIL_LENGTH) {
-            particle.history.shift();
-          }
-
-          let speedMultiplier = 1;
-          if (gameState === 'COUNTDOWN') {
-            speedMultiplier = 1 + (COUNTDOWN_SECONDS - countdown) * 0.5;
-          }
-          
-          if (gameState === 'RESULT' && !isTeamMode) {
-              if (touch.isWinner) {
-                particle.speed = 0.012;
-                particle.angle += particle.speed;
-                particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
-                particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-              } else if (touch.isLoser) {
-                particle.speed *= 0.97;
-                particle.opacity = Math.max(0, particle.opacity - 0.007);
-                
-                particle.angle += particle.speed;
-                particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
-                particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-              }
-          } else { 
-            particle.angle += particle.speed * speedMultiplier;
-            particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
-            particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-          }
-
-          if (particle.opacity > 0) {
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.strokeStyle = `hsla(${touch.hue}, 100%, 75%, ${particle.opacity})`;
-              ctx.lineWidth = particle.size * 2;
-              ctx.beginPath();
-              if (particle.history.length > 1) {
-                  ctx.moveTo(particle.history[0].x, particle.history[0].y);
-                  for (let i = 1; i < particle.history.length; i++) {
-                      ctx.lineTo(particle.history[i].x, particle.history[i].y);
-                  }
-              }
-              ctx.stroke();
-          }
-          
-          if (!(gameState === 'RESULT' && touch.isLoser && particle.opacity <= 0)) {
-            updatedParticles.push(particle);
-          }
-        });
+        let speedMultiplier = 1;
+        if (gameState === 'COUNTDOWN') {
+            speedMultiplier = 1 + (COUNTDOWN_SECONDS - countdown + 1) * 0.4;
+        }
         
-        newTouches.set(id, { ...touch, particles: updatedParticles });
+        if (gameState === 'RESULT') {
+            if (touch.isWinner) {
+                updatedTouch.rotationSpeed = 0.05;
+            } else if (touch.isLoser) {
+                updatedTouch.rotationSpeed *= 0.98;
+                updatedTouch.opacity = Math.max(0, touch.opacity - 0.015);
+            }
+        }
+        
+        updatedTouch.rotation += updatedTouch.rotationSpeed * speedMultiplier;
+
+        ctx.save();
+        ctx.translate(updatedTouch.x, updatedTouch.y);
+        ctx.rotate(updatedTouch.rotation);
+        ctx.globalAlpha = updatedTouch.opacity;
+        ctx.filter = `hue-rotate(${touch.hue}deg) brightness(1.2)`;
+        ctx.drawImage(magicCircleImg, -touch.size / 2, -touch.size / 2, touch.size, touch.size);
+        ctx.restore();
+        
+        if (gameState === 'RESULT' && touch.isLoser && updatedTouch.opacity <= 0) {
+          newTouches.delete(id);
+        } else {
+          newTouches.set(id, updatedTouch);
+        }
       });
 
       return newTouches;
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, isTeamMode, countdown]);
+  }, [magicCircleImg, gameState, countdown]);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     e.preventDefault();
@@ -176,8 +150,6 @@ export default function ChronoSelect() {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (newTouches.size >= MAX_TOUCHES) break;
-
-        const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => createParticle(touch.clientX, touch.clientY, i, PARTICLE_COUNT));
         
         const newHue = getDistinctHue(existingHues);
         existingHues.push(newHue);
@@ -186,11 +158,14 @@ export default function ChronoSelect() {
           id: touch.identifier,
           x: touch.clientX,
           y: touch.clientY,
-          particles: particles,
           isWinner: false,
           isLoser: false,
           team: null,
           hue: newHue,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: INITIAL_ROTATION_SPEED,
+          opacity: 1,
+          size: CIRCLE_SIZE,
         });
       }
       if (newTouches.size > 0) setGameState('WAITING');
@@ -246,8 +221,6 @@ export default function ChronoSelect() {
       const newTouches = new Map(currentTouches);
       const touchId = touchIdCounter.current++;
       
-      const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => createParticle(e.clientX, e.clientY, i, PARTICLE_COUNT));
-      
       const existingHues = Array.from(newTouches.values()).map(t => t.hue);
       const newHue = getDistinctHue(existingHues);
 
@@ -255,11 +228,14 @@ export default function ChronoSelect() {
           id: touchId,
           x: e.clientX,
           y: e.clientY,
-          particles: particles,
           isWinner: false,
           isLoser: false,
           team: null,
           hue: newHue,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: INITIAL_ROTATION_SPEED,
+          opacity: 1,
+          size: CIRCLE_SIZE,
       });
       
       if (newTouches.size > 0) setGameState('WAITING');
@@ -419,17 +395,11 @@ export default function ChronoSelect() {
             const team = isTeamMode ? (teams?.A.some(t => t.id === id) ? 'A' : 'B') : null;
             const isLoser = !isTeamMode && !isWinner;
             
-            if (isTeamMode) {
-                newTouches.set(id, { ...touch, isWinner, isLoser, team });
-            } else { 
-                if(isWinner) {
-                    const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: 0.012 }));
-                    newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, particles: highSpeedParticles });
-                } else if (isLoser) {
-                    playLoserSound();
-                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null });
-                }
+            if (isLoser && !isTeamMode) {
+                playLoserSound();
             }
+            
+            newTouches.set(id, { ...touch, isWinner, isLoser, team });
         });
         return newTouches;
       });
