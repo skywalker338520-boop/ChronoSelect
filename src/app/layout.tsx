@@ -22,7 +22,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased">{children}<Toaster /></body>
+      <body className="font-body antialiased" suppressHydrationWarning={true}>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
