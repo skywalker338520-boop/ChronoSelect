@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 const MAX_TOUCHES = 10;
 const PARTICLE_COUNT = 12;
 const INACTIVITY_TIMEOUT = 10000;
-const COUNTDOWN_SECONDS = 3;
+const COUNTDOWN_SECONDS = 5;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 const TRAIL_LENGTH = 80;
 
@@ -69,7 +69,7 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
@@ -100,7 +100,6 @@ export default function ChronoSelect() {
           
           if (gameState === 'RESULT' && !isTeamMode) {
               if (touch.isWinner) {
-                particle.speed += 0.0002;
                 particle.angle += particle.speed;
                 particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
                 particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
@@ -404,7 +403,8 @@ export default function ChronoSelect() {
                 newTouches.set(id, { ...touch, isWinner, isLoser, team });
             } else { 
                 if(isWinner) {
-                    newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120 });
+                    const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: p.speed * 3 }));
+                    newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120, particles: highSpeedParticles });
                 } else if (isLoser) {
                     playLoserSound();
                     newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0 });
