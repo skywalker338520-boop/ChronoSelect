@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -11,7 +12,7 @@ const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 
-const BASE_CIRCLE_SIZE = 120;
+const BASE_CIRCLE_SIZE = 138;
 
 const getDistinctHue = (existingHues: number[]): number => {
     const MIN_HUE_DIFFERENCE = 30; // degrees
