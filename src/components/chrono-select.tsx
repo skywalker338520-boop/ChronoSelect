@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 70;
+const PARTICLE_COUNT = 50;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -20,11 +20,11 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: Math.random() * 0.01 + 0.005,
+    speed: Math.random() * 0.005 + 0.002,
     vx: 0,
     vy: 0,
-    life: Math.random() * 0.8 + 0.2, // Random life between 0.2 and 1.0 for varied trail length
-    size: 1, // All particles same size
+    life: Math.random() * 0.6 + 0.6, // Longer trails, longer min length
+    size: 1,
     color: 'white',
   };
 };
@@ -35,7 +35,7 @@ export default function ChronoSelect() {
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState<boolean | undefined>(undefined);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
@@ -71,7 +71,6 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    // Add back the fade effect to create trails of limited length
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -82,7 +81,6 @@ export default function ChronoSelect() {
       newTouches.forEach((touch, id) => {
         const updatedParticles: Particle[] = [];
         
-        // In winner mode, only draw the winner's circle, not the losers'
         if (!winnerTouch || touch.isWinner) {
             ctx.beginPath();
             ctx.arc(touch.x, touch.y, 15, 0, Math.PI * 2);
@@ -94,30 +92,28 @@ export default function ChronoSelect() {
           let particle = { ...p };
 
           if (gameState === 'RESULT' && winnerTouch) {
-              // All particles (winner's and losers') circulate around the winner
               particle.angle += particle.speed;
               particle.x = winnerTouch.x + Math.cos(particle.angle) * particle.radius;
               particle.y = winnerTouch.y + Math.sin(particle.angle) * particle.radius;
-              particle.life = 1; // Keep particle alive
-          } else if (touch.isWinner || touch.isLoser) { // For team mode result
+              particle.life = 1; 
+          } else if (touch.isWinner || touch.isLoser) {
             particle.x += particle.vx;
             particle.y += particle.vy;
             particle.life -= 0.007;
-          } else { // IDLE, WAITING, COUNTDOWN states
+          } else { 
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-            particle.life -= 0.005; // Decrease life over time
+            particle.life -= 0.003; // Longer trails
           }
 
           if (particle.life > 0) {
             ctx.beginPath();
             ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, 1)`; // Solid color
+            ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, 1)`;
             ctx.fill();
             updatedParticles.push(particle);
           } else if (gameState !== 'RESULT') {
-            // Respawn particle if it dies to maintain particle count
             updatedParticles.push(createParticle(touch.x, touch.y));
           }
         });
@@ -197,7 +193,7 @@ export default function ChronoSelect() {
   
   const handleMouseDown = useCallback((e: MouseEvent) => {
     e.preventDefault();
-    if (e.button !== 0) return; // Only left click
+    if (e.button !== 0) return; 
 
     if (gameState === 'RESULT') {
       resetGame();
@@ -237,11 +233,15 @@ export default function ChronoSelect() {
   }, [resetGame, touches.size]);
 
   useEffect(() => {
-    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    setIsTouchDevice(isTouch);
-    
+    if (isTouchDevice === undefined) {
+      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsTouchDevice(isTouch);
+    }
+  }, [isTouchDevice]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || isTouchDevice === undefined) return;
 
     const resizeCanvas = () => {
         canvas.width = window.innerWidth;
@@ -250,7 +250,7 @@ export default function ChronoSelect() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    if (isTouch) {
+    if (isTouchDevice) {
         window.addEventListener('touchstart', handleTouchStart, { passive: false });
         window.addEventListener('touchmove', handleTouchMove, { passive: false });
         window.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -264,7 +264,7 @@ export default function ChronoSelect() {
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      if (isTouch) {
+      if (isTouchDevice) {
         window.removeEventListener('touchstart', handleTouchStart);
         window.removeEventListener('touchmove', handleTouchMove);
         window.removeEventListener('touchend', handleTouchEnd);
@@ -276,14 +276,15 @@ export default function ChronoSelect() {
 
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
+  }, [isTouchDevice, handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
 
+  const touchCount = touches.size;
   useEffect(() => {
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
 
-    if (touches.size >= 2 && gameState === 'WAITING') {
+    if (touchCount >= 2 && gameState === 'WAITING') {
       preCountdownTimerId.current = setTimeout(() => {
-        if (touches.size >= 2) {
+        if (touches.size >= 2) { 
             setGameState('COUNTDOWN');
         }
       }, PRE_COUNTDOWN_DELAY);
@@ -292,7 +293,7 @@ export default function ChronoSelect() {
     return () => {
       if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current)
     };
-  }, [touches.size, gameState]);
+  }, [touchCount, gameState, touches.size]);
 
   useEffect(() => {
     clearTimeout(inactiveTimerId.current);
@@ -304,6 +305,7 @@ export default function ChronoSelect() {
     return () => clearTimeout(inactiveTimerId.current);
   }, [gameState, touches.size]);
 
+  const { playTick: playTickSound } = useSound();
   useEffect(() => {
     if (countdownIntervalId.current) {
         clearInterval(countdownIntervalId.current);
@@ -311,7 +313,7 @@ export default function ChronoSelect() {
 
     if (gameState === 'COUNTDOWN') {
       setCountdown(COUNTDOWN_SECONDS);
-      playTick(1);
+      playTickSound(1);
       gameSpeed.current = 1;
 
       const intervalId = setInterval(() => {
@@ -319,7 +321,7 @@ export default function ChronoSelect() {
           const newCount = prevCountdown - 1;
           if (newCount > 0) {
             gameSpeed.current += 0.5;
-            playTick(gameSpeed.current);
+            playTickSound(gameSpeed.current);
             return newCount;
           } else {
             clearInterval(intervalId);
@@ -336,10 +338,9 @@ export default function ChronoSelect() {
         clearInterval(countdownIntervalId.current);
       }
     };
-  }, [gameState, playTick]);
+  }, [gameState, playTickSound]);
 
   useEffect(() => {
-    // Only run winner selection logic once when we enter the RESULT state.
     if (gameState === 'RESULT' && !Array.from(touches.values()).some(t => t.isWinner || t.isLoser || t.team)) {
       let winner: TouchPoint | null = null;
       let teams: { A: TouchPoint[], B: TouchPoint[] } | null = null;
@@ -362,6 +363,8 @@ export default function ChronoSelect() {
 
       setTouches(current => {
         const newTouches = new Map(current);
+        const winnerTouchForLosers = !isTeamMode ? Array.from(newTouches.values()).find(t => t.id === winner?.id) : null;
+
         newTouches.forEach((touch, id) => {
             const isWinner = !isTeamMode && touch.id === winner?.id;
             const team = isTeamMode ? (teams?.A.some(t => t.id === id) ? 'A' : 'B') : null;
@@ -377,18 +380,16 @@ export default function ChronoSelect() {
                     return {...p, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 };
                 });
                 newTouches.set(id, { ...touch, isWinner, isLoser, team, particles: updatedParticles });
-            } else { // Not team mode
+            } else { 
                 if(isWinner) {
                     newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120 });
-                } else if (isLoser) {
+                } else if (isLoser && winnerTouchForLosers) {
                     playLoserSound();
-                    const winnerTouch = Array.from(newTouches.values()).find(t => t.id === winner?.id);
                     const updatedParticles = touch.particles.map(p => {
-                        const angle = Math.atan2(winnerTouch!.y - p.y, winnerTouch!.x - p.x);
+                        const angle = Math.atan2(winnerTouchForLosers!.y - p.y, winnerTouchForLosers!.x - p.x);
                         const speed = 15 + Math.random() * 10;
                         return {...p, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 };
                     });
-
                     newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0, particles: updatedParticles });
                 }
             }
