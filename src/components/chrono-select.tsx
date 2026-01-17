@@ -75,7 +75,7 @@ export default function ChronoSelect() {
 
         if (gameState === 'RESULT' && touch.isWinner) {
             // Expand to fill screen, stop breathing.
-            updatedTouch.size *= 1.08;
+            updatedTouch.size *= 1.04;
         } else if (gameState === 'RESULT' && touch.isLoser) {
             // Shrink and fade faster.
             updatedTouch.size *= 0.9;
