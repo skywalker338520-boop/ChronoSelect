@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: 'ChronoSelect',
   description: 'Who goes first? Let fate decide.',
   manifest: '/manifest.json',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
