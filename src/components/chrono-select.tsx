@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { TouchPoint } from '@/lib/types';
 import { useSound } from '@/hooks/use-sound';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
@@ -41,7 +41,7 @@ export default function ChronoSelect() {
   const [touches, setTouches] = useState<Map<number, TouchPoint>>(new Map());
   const [gameState, setGameState] = useState<'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT'>('IDLE');
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
-  const [isTeamMode, setIsTeamMode] = useState(false);
+  const [gameMode, setGameMode] = useState<'chooser' | 'teamSplit'>('chooser');
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -114,7 +114,7 @@ export default function ChronoSelect() {
         ctx.save();
         ctx.globalAlpha = touch.opacity;
         
-        const color = `hsl(${touch.hue}, 90%, 70%)`;
+        const color = `hsl(${touch.hue}, ${touch.saturation}%, 70%)`;
         ctx.fillStyle = color;
         
         // Glow effect
@@ -175,11 +175,16 @@ export default function ChronoSelect() {
         
         const newTouches = new Map(currentTouches);
         const existingHues = Array.from(newTouches.values()).map(t => t.hue);
-        const newHue = getDistinctHue(existingHues);
         
+        const isChooserMode = gameMode === 'chooser';
+        const newHue = isChooserMode ? getDistinctHue(existingHues) : 0;
+        const newSaturation = isChooserMode ? 90 : 0;
+
         newTouches.set(id, {
             id, x, y,
-            isWinner: false, isLoser: false, team: null, hue: newHue,
+            isWinner: false, isLoser: false, team: null, 
+            hue: newHue,
+            saturation: newSaturation,
             opacity: 1,
             size: BASE_CIRCLE_SIZE,
             baseSize: BASE_CIRCLE_SIZE,
@@ -189,7 +194,7 @@ export default function ChronoSelect() {
         if (newTouches.size > 0) setGameState('WAITING');
         return newTouches;
     });
-  }, [gameState, resetGame]);
+  }, [gameState, resetGame, gameMode]);
 
   const handlePointerMove = useCallback((x: number, y: number, id: number) => {
     setTouches(currentTouches => {
@@ -326,45 +331,61 @@ export default function ChronoSelect() {
 
   useEffect(() => {
     if (gameState === 'RESULT' && !Array.from(touches.values()).some(t => t.isWinner || t.isLoser || t.team)) {
-      let winner: TouchPoint | null = null;
-      let teams: { A: TouchPoint[], B: TouchPoint[] } | null = null;
-      
       const currentTouches = Array.from(touches.values());
       if (currentTouches.length === 0) {
         resetGame();
         return;
       }
       
-      if (isTeamMode) {
+      if (gameMode === 'teamSplit') {
         playTeamSplitSound();
         const shuffled = [...currentTouches].sort(() => 0.5 - Math.random());
         const mid = Math.ceil(shuffled.length / 2);
-        teams = { A: shuffled.slice(0, mid), B: shuffled.slice(mid) };
-      } else {
-        playWinnerSound();
-        winner = currentTouches[Math.floor(Math.random() * currentTouches.length)];
-      }
+        const teams = { A: shuffled.slice(0, mid), B: shuffled.slice(mid) };
+        
+        const hueA = getDistinctHue([]);
+        const hueB = getDistinctHue([hueA]);
 
-      setTouches(current => {
-        const newTouches = new Map(current);
-        newTouches.forEach((touch, id) => {
-            const isWinner = !isTeamMode && touch.id === winner?.id;
-            const team = isTeamMode ? (teams?.A.some(t => t.id === id) ? 'A' : 'B') : null;
-            const isLoser = !isTeamMode && !isWinner;
+        setTouches(current => {
+          const newTouches = new Map(current);
+          newTouches.forEach((touch, id) => {
+            const team = teams.A.some(t => t.id === id) ? 'A' : 'B';
+            newTouches.set(id, { 
+              ...touch, 
+              isWinner: false, 
+              isLoser: false, 
+              team, 
+              hue: team === 'A' ? hueA : hueB,
+              saturation: 90,
+            });
+          });
+          return newTouches;
+        });
+      } else { // Chooser mode
+        playWinnerSound();
+        const winner = currentTouches[Math.floor(Math.random() * currentTouches.length)];
+
+        setTouches(current => {
+          const newTouches = new Map(current);
+          newTouches.forEach((touch, id) => {
+            const isWinner = touch.id === winner?.id;
+            const isLoser = !isWinner;
             
-            if (isLoser && !isTeamMode) {
-                playLoserSound();
+            if (isLoser) {
+              playLoserSound();
             }
             
-            newTouches.set(id, { ...touch, isWinner, isLoser, team });
+            newTouches.set(id, { ...touch, isWinner, isLoser, team: null });
+          });
+          return newTouches;
         });
-        return newTouches;
-      });
+      }
+
 
       const resetTimeout = setTimeout(resetGame, 10000);
       return () => clearTimeout(resetTimeout);
     }
-  }, [gameState, touches, isTeamMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
+  }, [gameState, touches, gameMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
 
   return (
     <div 
@@ -389,17 +410,21 @@ export default function ChronoSelect() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto mr-4">
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="team-mode" className="font-headline">
-                    Split into 2 Teams
-                </Label>
-                <Switch
-                    id="team-mode"
-                    checked={isTeamMode}
-                    onCheckedChange={setIsTeamMode}
-                    disabled={gameState !== 'IDLE' && gameState !== 'WAITING'}
-                />
-              </div>
+               <RadioGroup 
+                  value={gameMode} 
+                  onValueChange={(value) => setGameMode(value as 'chooser' | 'teamSplit')}
+                  className="gap-4" 
+                  disabled={gameState !== 'IDLE' && gameState !== 'WAITING'}
+              >
+                  <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="chooser" id="chooser-mode" />
+                      <Label htmlFor="chooser-mode" className="font-headline">Chooser</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="teamSplit" id="teamsplit-mode" />
+                      <Label htmlFor="teamsplit-mode" className="font-headline">Team Split</Label>
+                  </div>
+              </RadioGroup>
             </PopoverContent>
           </Popover>
         </div>
