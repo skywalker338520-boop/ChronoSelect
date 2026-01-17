@@ -24,7 +24,7 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     vx: 0,
     vy: 0,
     life: 1,
-    size: Math.random() * 2 + 1,
+    size: 2,
     color: 'white',
   };
 };
@@ -273,7 +273,8 @@ export default function ChronoSelect() {
 
     if (touches.size >= 2 && gameState === 'WAITING') {
       preCountdownTimerId.current = setTimeout(() => {
-        if (touches.size >= 2) { // Double-check in case touches changed during timeout
+        // Double-check in case touches changed during timeout, by checking the gameState
+        if (gameState === 'WAITING') {
             setGameState('COUNTDOWN');
         }
       }, PRE_COUNTDOWN_DELAY);
@@ -372,7 +373,14 @@ export default function ChronoSelect() {
                     newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120 });
                 } else if (isLoser) {
                     playLoserSound();
-                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0 });
+                    const winnerTouch = Array.from(newTouches.values()).find(t => t.id === winner?.id);
+                    const updatedParticles = touch.particles.map(p => {
+                        const angle = Math.atan2(winnerTouch!.y - p.y, winnerTouch!.x - p.x);
+                        const speed = 15 + Math.random() * 10;
+                        return {...p, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 };
+                    });
+
+                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0, particles: updatedParticles });
                 }
             }
         });
