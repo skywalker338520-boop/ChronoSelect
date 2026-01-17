@@ -10,6 +10,7 @@ const MAX_TOUCHES = 10;
 const PARTICLE_COUNT = 50;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
+const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 
 const createParticle = (touchX: number, touchY: number): Particle => {
   const angle = Math.random() * Math.PI * 2;
@@ -40,6 +41,7 @@ export default function ChronoSelect() {
   const animationFrameId = useRef<number>();
   const inactiveTimerId = useRef<NodeJS.Timeout>();
   const countdownIntervalId = useRef<NodeJS.Timeout>();
+  const preCountdownTimerId = useRef<NodeJS.Timeout>(); // For the 2-second delay
   const gameSpeed = useRef(1);
   const touchIdCounter = useRef(0);
 
@@ -53,6 +55,7 @@ export default function ChronoSelect() {
     touchIdCounter.current = 0;
     if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     if (inactiveTimerId.current) clearTimeout(inactiveTimerId.current);
+    if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
   }, []);
 
   const animate = useCallback(() => {
@@ -135,7 +138,7 @@ export default function ChronoSelect() {
       });
     }
     setTouches(newTouches);
-    setGameState(newTouches.size > 1 ? 'COUNTDOWN' : 'WAITING');
+    setGameState('WAITING');
   }, [touches, gameState, resetGame]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
@@ -163,9 +166,7 @@ export default function ChronoSelect() {
         const touch = e.changedTouches[i];
         newTouches.delete(touch.identifier);
       }
-      if (newTouches.size < 2) {
-        setGameState(newTouches.size === 1 ? 'WAITING' : 'IDLE');
-      }
+      setGameState(newTouches.size > 0 ? 'WAITING' : 'IDLE');
       return newTouches;
     });
   }, [gameState]);
@@ -200,7 +201,7 @@ export default function ChronoSelect() {
     });
     
     setTouches(newTouches);
-    setGameState(newTouches.size > 1 ? 'COUNTDOWN' : 'WAITING');
+    setGameState('WAITING');
   }, [touches, gameState, resetGame]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
@@ -244,6 +245,18 @@ export default function ChronoSelect() {
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
+
+  useEffect(() => {
+    clearTimeout(preCountdownTimerId.current);
+
+    if (touches.size >= 2 && gameState === 'WAITING') {
+      preCountdownTimerId.current = setTimeout(() => {
+        setGameState('COUNTDOWN');
+      }, PRE_COUNTDOWN_DELAY);
+    }
+    
+    return () => clearTimeout(preCountdownTimerId.current);
+  }, [touches.size, gameState]);
 
   useEffect(() => {
     if (gameState === 'IDLE' && touches.size === 0) {
