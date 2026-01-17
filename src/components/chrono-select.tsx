@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
-const COUNTDOWN_SECONDS = 5;
+const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 
-const BASE_CIRCLE_SIZE = 150;
+const BASE_CIRCLE_SIZE = 120;
 
 const getDistinctHue = (existingHues: number[]): number => {
     const MIN_HUE_DIFFERENCE = 30; // degrees
@@ -75,7 +75,7 @@ export default function ChronoSelect() {
 
         if (gameState === 'RESULT' && touch.isWinner) {
             // Expand to fill screen, stop breathing.
-            updatedTouch.size *= 1.04;
+            updatedTouch.size *= 1.02;
         } else if (gameState === 'RESULT' && touch.isLoser) {
             // Shrink and fade faster.
             updatedTouch.size *= 0.9;
