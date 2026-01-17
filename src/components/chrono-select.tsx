@@ -7,11 +7,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 24;
+const PARTICLE_COUNT = 36; // Increased from 24
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 5;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
-const TRAIL_LENGTH = 80;
+const TRAIL_LENGTH = 120;
 
 const createParticle = (touchX: number, touchY: number, index: number, total: number): Particle => {
   const angle = (index / total) * (Math.PI * 2);
@@ -21,7 +21,7 @@ const createParticle = (touchX: number, touchY: number, index: number, total: nu
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: (Math.random() * 0.00221 + 0.001105) * 1.6,
+    speed: (Math.random() * 0.00221 + 0.001105) * 2.0,
     size: 1,
     color: 'white',
     history: [],
