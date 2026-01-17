@@ -369,7 +369,7 @@ export default function ChronoSelect() {
 
   return (
     <div 
-        className="relative h-full w-full bg-black cursor-none touch-none"
+        className="relative h-full w-full bg-black cursor-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
