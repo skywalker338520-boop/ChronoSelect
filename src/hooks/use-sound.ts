@@ -10,6 +10,7 @@ export function useSound() {
     ding: Tone.Synth,
     whoosh: Tone.NoiseSynth,
   } | null>(null);
+  const lastTickTime = useRef(0);
 
   useEffect(() => {
     const initAudio = async () => {
@@ -55,8 +56,17 @@ export function useSound() {
 
   const playTick = useCallback((rate: number) => {
     if (!synths.current) return;
+    
+    let scheduledTime = Tone.now();
+    if (scheduledTime <= lastTickTime.current) {
+        // Ensure scheduledTime is always greater than the last one.
+        // A small offset like 0.01 should be enough.
+        scheduledTime = lastTickTime.current + 0.01;
+    }
+    lastTickTime.current = scheduledTime;
+    
     const freq = rate > 1.5 ? 'C5' : 'C4';
-    synths.current.tick.triggerAttackRelease(freq, '8n', Tone.now());
+    synths.current.tick.triggerAttackRelease(freq, '8n', scheduledTime);
   }, []);
 
   const playWinnerSound = useCallback(() => {
