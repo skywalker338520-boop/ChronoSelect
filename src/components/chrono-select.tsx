@@ -34,12 +34,14 @@ export default function ChronoSelect() {
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
   const inactiveTimerId = useRef<NodeJS.Timeout>();
   const countdownIntervalId = useRef<NodeJS.Timeout>();
   const gameSpeed = useRef(1);
+  const touchIdCounter = useRef(0);
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
 
@@ -48,6 +50,7 @@ export default function ChronoSelect() {
     setGameState('IDLE');
     setShowInactivePrompt(false);
     gameSpeed.current = 1;
+    touchIdCounter.current = 0;
     if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     if (inactiveTimerId.current) clearTimeout(inactiveTimerId.current);
   }, []);
@@ -167,7 +170,47 @@ export default function ChronoSelect() {
     });
   }, [gameState]);
   
+  const handleMouseDown = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    if (e.button !== 0) return; // Only left click
+
+    if (gameState === 'RESULT') {
+      resetGame();
+      return;
+    }
+    if (touches.size >= MAX_TOUCHES) return;
+
+    clearTimeout(inactiveTimerId.current);
+    setShowInactivePrompt(false);
+
+    const newTouches = new Map(touches);
+    const touchId = touchIdCounter.current++;
+    
+    const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(e.clientX, e.clientY));
+    
+    newTouches.set(touchId, {
+        id: touchId,
+        x: e.clientX,
+        y: e.clientY,
+        particles: particles,
+        isWinner: false,
+        isLoser: false,
+        team: null,
+        hue: (newTouches.size * 36) % 360,
+    });
+    
+    setTouches(newTouches);
+    setGameState(newTouches.size > 1 ? 'COUNTDOWN' : 'WAITING');
+  }, [touches, gameState, resetGame]);
+
+  const handleContextMenu = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    resetGame();
+  }, [resetGame]);
+
   useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.width = window.innerWidth;
@@ -177,6 +220,10 @@ export default function ChronoSelect() {
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd, { passive: false });
     window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    
+    // Mouse events for desktop testing
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('contextmenu', handleContextMenu);
 
     animationFrameId.current = requestAnimationFrame(animate);
 
@@ -185,9 +232,13 @@ export default function ChronoSelect() {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('touchcancel', handleTouchEnd);
+      
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('contextmenu', handleContextMenu);
+
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate]);
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
 
   useEffect(() => {
     if (gameState === 'IDLE' && touches.size === 0) {
@@ -227,6 +278,11 @@ export default function ChronoSelect() {
   useEffect(() => {
     if (gameState === 'RESULT') {
       const currentTouches = Array.from(touches.values());
+      if (currentTouches.length === 0) {
+        resetGame();
+        return;
+      }
+
       let winner: TouchPoint | null = null;
       let teams: { A: TouchPoint[], B: TouchPoint[] } | null = null;
       
@@ -288,7 +344,7 @@ export default function ChronoSelect() {
       {showInactivePrompt && (
         <div className="animate-pulse absolute inset-0 flex items-center justify-center pointer-events-none">
           <h1 className="text-4xl md:text-5xl font-headline text-primary" style={{ textShadow: '0 0 12px hsl(var(--primary))' }}>
-            Tag your finger
+            {isTouchDevice ? "Tag your finger" : "Click to add a player"}
           </h1>
         </div>
       )}
@@ -306,7 +362,7 @@ export default function ChronoSelect() {
             <h1 className="text-7xl md:text-9xl font-bold font-headline text-primary animate-pulse" style={{ textShadow: '0 0 25px hsl(var(--primary))' }}>
                 {getWinnerText()}!
             </h1>
-            <p className="text-xl md:text-2xl mt-4 font-headline text-primary/80 animate-pulse">Tap to reset</p>
+            <p className="text-xl md:text-2xl mt-4 font-headline text-primary/80 animate-pulse">Click to reset</p>
         </div>
       )}
     </div>
