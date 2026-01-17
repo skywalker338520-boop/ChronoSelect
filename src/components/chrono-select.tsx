@@ -65,7 +65,6 @@ export default function ChronoSelect() {
   // Animation loop for STATE UPDATES
   const animate = useCallback(() => {
     setTouches(currentTouches => {
-      // If there are no touches, no need to update anything.
       if (currentTouches.size === 0) {
         return currentTouches;
       }
@@ -73,28 +72,20 @@ export default function ChronoSelect() {
       const newTouches = new Map();
       currentTouches.forEach((touch, id) => {
         let updatedTouch = { ...touch };
-        
-        let speedMultiplier = 1;
-        if (gameState === 'COUNTDOWN') {
-            speedMultiplier = 3;
-        }
 
-        updatedTouch.animationPhase += 0.02 * speedMultiplier;
-        const breathAmount = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1); // Breathe by 10% of base size
-        updatedTouch.size = updatedTouch.baseSize + breathAmount;
-        
-        if (gameState === 'RESULT') {
-            if (touch.isWinner) {
-                // Expand to fill screen, stop breathing
-                updatedTouch.size *= 1.25;
-            } else if (touch.isLoser) {
-                // Shrink and fade faster
-                updatedTouch.size *= 0.9;
-                updatedTouch.opacity = Math.max(0, touch.opacity - 0.05);
-            } else if (touch.team) {
-                const teamBreath = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1);
-                updatedTouch.size = updatedTouch.baseSize + teamBreath;
-            }
+        if (gameState === 'RESULT' && touch.isWinner) {
+            // Expand to fill screen, stop breathing.
+            updatedTouch.size *= 1.25;
+        } else if (gameState === 'RESULT' && touch.isLoser) {
+            // Shrink and fade faster.
+            updatedTouch.size *= 0.9;
+            updatedTouch.opacity = Math.max(0, touch.opacity - 0.05);
+        } else {
+            // Normal breathing for IDLE, WAITING, COUNTDOWN, and Team modes.
+            const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
+            updatedTouch.animationPhase += 0.02 * speedMultiplier;
+            const breathAmount = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1);
+            updatedTouch.size = updatedTouch.baseSize + breathAmount;
         }
         
         if (!(gameState === 'RESULT' && touch.isLoser && updatedTouch.opacity <= 0)) {
