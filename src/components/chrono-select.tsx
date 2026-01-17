@@ -254,14 +254,16 @@ export default function ChronoSelect() {
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
+    // preventDefault() is called in onTouchStart for game touches, which should prevent
+    // default actions (like scrolling) for the whole gesture. We just process the move.
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerMove(touch.clientX, touch.clientY, touch.identifier);
     }
   };
   
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
+    // preventDefault() is NOT called here to ensure that `click` events can fire
+    // on UI elements like the settings button.
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerUp(touch.identifier);
     }
