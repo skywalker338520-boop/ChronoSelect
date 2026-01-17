@@ -5,7 +5,6 @@ export type Particle = {
   angle: number;
   speed: number;
   size: number;
-  color: string;
   history: Array<{ x: number; y: number }>;
   opacity: number;
 };

@@ -7,11 +7,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 36; // Increased from 24
+const PARTICLE_COUNT = 36;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 5;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
-const TRAIL_LENGTH = 120;
+const TRAIL_LENGTH = 180;
 
 const createParticle = (touchX: number, touchY: number, index: number, total: number): Particle => {
   const angle = (index / total) * (Math.PI * 2);
@@ -21,9 +21,8 @@ const createParticle = (touchX: number, touchY: number, index: number, total: nu
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: (Math.random() * 0.00221 + 0.001105) * 2.0,
+    speed: (Math.random() * 0.00221 + 0.001105) * 2.5,
     size: 1,
-    color: 'white',
     history: [],
     opacity: 1,
   };
@@ -69,7 +68,7 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
@@ -78,13 +77,6 @@ export default function ChronoSelect() {
       newTouches.forEach((touch, id) => {
         const updatedParticles: Particle[] = [];
         
-        if (gameState !== 'RESULT' || !touch.isLoser) {
-            ctx.beginPath();
-            ctx.arc(touch.x, touch.y, 15, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(10, 10, 10, 0.8)';
-            ctx.fill();
-        }
-
         touch.particles.forEach(p => {
           let particle = { ...p, history: [...p.history] };
 
@@ -100,7 +92,7 @@ export default function ChronoSelect() {
           
           if (gameState === 'RESULT' && !isTeamMode) {
               if (touch.isWinner) {
-                particle.speed = 0.012; // High constant speed
+                particle.speed = 0.012;
                 particle.angle += particle.speed;
                 particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
                 particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
@@ -129,7 +121,6 @@ export default function ChronoSelect() {
                   for (let i = 1; i < particle.history.length; i++) {
                       ctx.lineTo(particle.history[i].x, particle.history[i].y);
                   }
-                  ctx.lineTo(particle.x, particle.y); 
               }
               ctx.stroke();
           }
@@ -174,7 +165,7 @@ export default function ChronoSelect() {
           isWinner: false,
           isLoser: false,
           team: null,
-          hue: (newTouches.size * 36) % 360,
+          hue: Math.random() * 360,
         });
       }
       if (newTouches.size > 0) setGameState('WAITING');
@@ -240,7 +231,7 @@ export default function ChronoSelect() {
           isWinner: false,
           isLoser: false,
           team: null,
-          hue: (newTouches.size * 36) % 360,
+          hue: Math.random() * 360,
       });
       
       if (newTouches.size > 0) setGameState('WAITING');
@@ -404,7 +395,7 @@ export default function ChronoSelect() {
                 newTouches.set(id, { ...touch, isWinner, isLoser, team });
             } else { 
                 if(isWinner) {
-                    const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: 0.012 })); // High constant speed
+                    const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: 0.012 }));
                     newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, particles: highSpeedParticles });
                 } else if (isLoser) {
                     playLoserSound();
