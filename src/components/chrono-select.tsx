@@ -104,8 +104,6 @@ export default function ChronoSelect() {
             ctx.beginPath();
             ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
             ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, ${particle.life})`;
-            ctx.shadowColor = `hsla(${touch.hue}, 100%, 75%, 1)`;
-            ctx.shadowBlur = 10;
             ctx.fill();
             updatedParticles.push(particle);
           }
@@ -401,7 +399,7 @@ export default function ChronoSelect() {
     <div className="relative h-full w-full bg-black">
       <canvas ref={canvasRef} className="absolute inset-0" />
       <div className="absolute top-4 right-4 flex items-center space-x-3 z-10">
-        <Label htmlFor="team-mode" className="text-primary font-headline" style={{ textShadow: '0 0 8px hsl(var(--primary))' }}>
+        <Label htmlFor="team-mode" className="text-primary font-headline">
           Split into 2 Teams
         </Label>
         <Switch id="team-mode" checked={isTeamMode} onCheckedChange={setIsTeamMode} disabled={gameState !== 'IDLE' && gameState !== 'WAITING'} />
@@ -409,7 +407,7 @@ export default function ChronoSelect() {
 
       {showInactivePrompt && (
         <div className="animate-pulse absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h1 className="text-4xl md:text-5xl font-headline text-primary" style={{ textShadow: '0 0 12px hsl(var(--primary))' }}>
+          <h1 className="text-4xl md:text-5xl font-headline text-primary">
             {isTouchDevice ? "Tag your finger" : "Click to add a player"}
           </h1>
         </div>
@@ -417,7 +415,7 @@ export default function ChronoSelect() {
 
       {gameState === 'COUNTDOWN' && countdown > 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h1 className="text-9xl font-bold font-headline text-primary" style={{ textShadow: '0 0 20px hsl(var(--primary))' }}>
+          <h1 className="text-9xl font-bold font-headline text-primary">
             {countdown}
           </h1>
         </div>
@@ -425,7 +423,7 @@ export default function ChronoSelect() {
 
       {gameState === 'RESULT' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <h1 className="text-7xl md:text-9xl font-bold font-headline text-primary animate-pulse" style={{ textShadow: '0 0 25px hsl(var(--primary))' }}>
+            <h1 className="text-7xl md:text-9xl font-bold font-headline text-primary animate-pulse">
                 {getWinnerText()}!
             </h1>
             <p className="text-xl md:text-2xl mt-4 font-headline text-primary/80 animate-pulse">Click to reset</p>
