@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 100;
+const PARTICLE_COUNT = 70;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -20,7 +20,7 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: Math.random() * 0.02 + 0.01,
+    speed: Math.random() * 0.01 + 0.005,
     vx: 0,
     vy: 0,
     life: Math.random() * 0.8 + 0.2, // Random life between 0.2 and 1.0 for varied trail length
@@ -107,7 +107,7 @@ export default function ChronoSelect() {
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-            particle.life -= 0.007; // Decrease life over time
+            particle.life -= 0.005; // Decrease life over time
           }
 
           if (particle.life > 0) {
