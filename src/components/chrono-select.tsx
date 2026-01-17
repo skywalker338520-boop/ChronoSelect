@@ -127,15 +127,6 @@ export default function ChronoSelect() {
         ctx.arc(touch.x, touch.y, touch.size / 2, 0, Math.PI * 2);
         ctx.fill();
 
-        if(touch.team) {
-            ctx.fillStyle = "white";
-            ctx.font = `bold ${touch.size / 3}px -apple-system, sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.shadowColor = "transparent"; // No shadow for text
-            ctx.fillText(touch.team, touch.x, touch.y);
-        }
-
         ctx.restore();
     });
   }, [touches, gameState]);
@@ -417,7 +408,7 @@ export default function ChronoSelect() {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon">
-                <Settings className="h-6 w-6 text-primary" />
+                <Settings className="h-12 w-12 text-primary" />
                 <span className="sr-only">Settings</span>
               </Button>
             </PopoverTrigger>
