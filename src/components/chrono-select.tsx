@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 50;
+const PARTICLE_COUNT = 150;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -24,7 +24,7 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     vx: 0,
     vy: 0,
     life: 1,
-    size: 2,
+    size: 1.5,
     color: 'white',
   };
 };
@@ -63,7 +63,7 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
@@ -109,7 +109,6 @@ export default function ChronoSelect() {
           }
         });
         
-        ctx.shadowBlur = 0;
         newTouches.set(id, { ...touch, particles: updatedParticles });
       });
 
@@ -406,7 +405,7 @@ export default function ChronoSelect() {
       </div>
 
       {showInactivePrompt && (
-        <div className="animate-pulse absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <h1 className="text-4xl md:text-5xl font-headline text-primary">
             {isTouchDevice ? "Tag your finger" : "Click to add a player"}
           </h1>
@@ -423,10 +422,10 @@ export default function ChronoSelect() {
 
       {gameState === 'RESULT' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <h1 className="text-7xl md:text-9xl font-bold font-headline text-primary animate-pulse">
+            <h1 className="text-7xl md:text-9xl font-bold font-headline text-primary">
                 {getWinnerText()}!
             </h1>
-            <p className="text-xl md:text-2xl mt-4 font-headline text-primary/80 animate-pulse">Click to reset</p>
+            <p className="text-xl md:text-2xl mt-4 font-headline text-primary/80">Click to reset</p>
         </div>
       )}
     </div>
