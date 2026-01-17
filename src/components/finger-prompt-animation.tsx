@@ -17,12 +17,14 @@ const FingerPromptAnimation = () => {
                         className="w-full h-full text-white"
                         style={{ filter: "drop-shadow(0 4px 6px rgba(255, 255, 255, 0.2))" }}
                     >
-                        <path d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5" />
-                        <path d="M11 11.5v-2a1.5 1.5 0 0 1 3 0v2.5" />
-                        <path d="M14 10.5a1.5 1.5 0 0 1 3 0v1.5" />
-                        <path d="M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-2a6 6 0 0 1-5.2-3" />
-                        <path d="M3.5 12.5a2.5 2.5 0 0 1 3-1.5" />
-                        <path d="M14.5 5.5a1.5 1.5 0 0 1 3 0" />
+                        <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4" />
+                        <path d="M5 19.5A8.5 8.5 0 0 1 12 11a8.5 8.5 0 0 1 7 8.5" />
+                        <path d="M12 11v.01" />
+                        <path d="M7 16v.01" />
+                        <path d="M10 19v.01" />
+                        <path d="M14 19v.01" />
+                        <path d="M17 16v.01" />
+                        <path d="M10 13v.01" />
                     </svg>
                 </div>
                 
