@@ -13,8 +13,8 @@ const COUNTDOWN_SECONDS = 5;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 const TRAIL_LENGTH = 80;
 
-const createParticle = (touchX: number, touchY: number): Particle => {
-  const angle = Math.random() * Math.PI * 2;
+const createParticle = (touchX: number, touchY: number, index: number, total: number): Particle => {
+  const angle = (index / total) * (Math.PI * 2);
   const radius = Math.random() * 40 + 20;
   return {
     x: touchX,
@@ -100,6 +100,7 @@ export default function ChronoSelect() {
           
           if (gameState === 'RESULT' && !isTeamMode) {
               if (touch.isWinner) {
+                particle.speed = 0.012; // High constant speed
                 particle.angle += particle.speed;
                 particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
                 particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
@@ -163,7 +164,7 @@ export default function ChronoSelect() {
         const touch = e.changedTouches[i];
         if (newTouches.size >= MAX_TOUCHES) break;
 
-        const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(touch.clientX, touch.clientY));
+        const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => createParticle(touch.clientX, touch.clientY, i, PARTICLE_COUNT));
         
         newTouches.set(touch.identifier, {
           id: touch.identifier,
@@ -229,7 +230,7 @@ export default function ChronoSelect() {
       const newTouches = new Map(currentTouches);
       const touchId = touchIdCounter.current++;
       
-      const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(e.clientX, e.clientY));
+      const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => createParticle(e.clientX, e.clientY, i, PARTICLE_COUNT));
       
       newTouches.set(touchId, {
           id: touchId,
@@ -403,7 +404,7 @@ export default function ChronoSelect() {
                 newTouches.set(id, { ...touch, isWinner, isLoser, team });
             } else { 
                 if(isWinner) {
-                    const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: p.speed * 3 }));
+                    const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: 0.012 })); // High constant speed
                     newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120, particles: highSpeedParticles });
                 } else if (isLoser) {
                     playLoserSound();
@@ -443,7 +444,7 @@ export default function ChronoSelect() {
       {showInactivePrompt && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <h1 className="text-4xl md:text-5xl font-headline text-primary">
-            {isTouchDevice ? "Tag your finger" : "Click to add a player"}
+            Tag Your Finger
           </h1>
         </div>
       )}
