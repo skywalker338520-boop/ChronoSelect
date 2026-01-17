@@ -9,6 +9,7 @@ export function useSound() {
     tick: Tone.Synth,
     ding: Tone.Synth,
     whoosh: Tone.NoiseSynth,
+    loser: Tone.NoiseSynth,
   } | null>(null);
   const lastTickTime = useRef(0);
 
@@ -32,6 +33,10 @@ export function useSound() {
             noise: { type: 'white' },
             envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.2 },
           }).toDestination(),
+          loser: new Tone.NoiseSynth({
+            noise: { type: 'pink' },
+            envelope: { attack: 0.1, decay: 0.5, sustain: 0, release: 0.4 },
+          }).toDestination(),
         };
         
         isInitialized.current = true;
@@ -50,6 +55,7 @@ export function useSound() {
         synths.current.tick.dispose();
         synths.current.ding.dispose();
         synths.current.whoosh.dispose();
+        synths.current.loser.dispose();
       }
     };
   }, []);
@@ -86,13 +92,7 @@ export function useSound() {
   
   const playLoserSound = useCallback(() => {
     if (!synths.current) return;
-    const now = Tone.now();
-    const synth = new Tone.NoiseSynth({
-      noise: { type: 'pink' },
-      envelope: { attack: 0.1, decay: 0.5, sustain: 0, release: 0.4 },
-    }).toDestination();
-    synth.triggerAttackRelease('0.6n', now);
-    setTimeout(() => synth.dispose(), 1000);
+    synths.current.loser.triggerAttackRelease('0.6n', Tone.now());
   }, []);
 
   return { playTick, playWinnerSound, playTeamSplitSound, playLoserSound };

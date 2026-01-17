@@ -245,9 +245,10 @@ export default function ChronoSelect() {
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Prevent the browser from handling touchmove events, which can cause
-    // unwanted scrolling or zooming on mobile devices.
-    e.preventDefault();
+    // We do not call e.preventDefault() here because the `touch-action: none`
+    // CSS property on the body should be sufficient to prevent unwanted
+    // scrolling or zooming. Calling preventDefault can interfere with
+    // other touch interactions, like tapping the settings button.
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerMove(touch.clientX, touch.clientY, touch.identifier);
     }
@@ -367,6 +368,9 @@ export default function ChronoSelect() {
         });
       } else { // Chooser mode
         playWinnerSound();
+        if (currentTouches.length > 1) {
+          playLoserSound();
+        }
         const winner = currentTouches[Math.floor(Math.random() * currentTouches.length)];
 
         setTouches(current => {
@@ -374,17 +378,11 @@ export default function ChronoSelect() {
           newTouches.forEach((touch, id) => {
             const isWinner = touch.id === winner?.id;
             const isLoser = !isWinner;
-            
-            if (isLoser) {
-              playLoserSound();
-            }
-            
             newTouches.set(id, { ...touch, isWinner, isLoser, team: null });
           });
           return newTouches;
         });
       }
-
 
       const resetTimeout = setTimeout(resetGame, 10000);
       return () => clearTimeout(resetTimeout);
