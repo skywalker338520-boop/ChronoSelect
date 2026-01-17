@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 50;
+const PARTICLE_COUNT = 35;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -71,7 +71,7 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
@@ -104,7 +104,7 @@ export default function ChronoSelect() {
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-            particle.life -= 0.003; // Longer trails
+            particle.life -= 0.0015; 
           }
 
           if (particle.life > 0) {
@@ -250,30 +250,43 @@ export default function ChronoSelect() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
+    let usingTouch = false;
+    const touchStartHandler = (e: TouchEvent) => {
+      usingTouch = true;
+      handleTouchStart(e);
+    }
+    const mouseDownHandler = (e: MouseEvent) => {
+      if(usingTouch) return;
+      handleMouseDown(e);
+    }
+    const contextMenuHandler = (e: MouseEvent) => {
+        if(usingTouch) return;
+        handleContextMenu(e);
+    }
+
     if (isTouchDevice) {
-        window.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchstart', touchStartHandler, { passive: false });
         window.addEventListener('touchmove', handleTouchMove, { passive: false });
         window.addEventListener('touchend', handleTouchEnd, { passive: false });
         window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
-    } else {
-        window.addEventListener('mousedown', handleMouseDown);
-        window.addEventListener('contextmenu', handleContextMenu);
     }
+    
+    window.addEventListener('mousedown', mouseDownHandler);
+    window.addEventListener('contextmenu', contextMenuHandler);
 
     animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
       if (isTouchDevice) {
-        window.removeEventListener('touchstart', handleTouchStart);
+        window.removeEventListener('touchstart', touchStartHandler);
         window.removeEventListener('touchmove', handleTouchMove);
         window.removeEventListener('touchend', handleTouchEnd);
         window.removeEventListener('touchcancel', handleTouchEnd);
-      } else {
-        window.removeEventListener('mousedown', handleMouseDown);
-        window.removeEventListener('contextmenu', handleContextMenu);
       }
-
+      window.removeEventListener('mousedown', mouseDownHandler);
+      window.removeEventListener('contextmenu', contextMenuHandler);
+      
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
   }, [isTouchDevice, handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
@@ -281,7 +294,6 @@ export default function ChronoSelect() {
   const touchCount = touches.size;
   useEffect(() => {
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
-
     if (touchCount >= 2 && gameState === 'WAITING') {
       preCountdownTimerId.current = setTimeout(() => {
         if (touches.size >= 2) { 
@@ -293,7 +305,8 @@ export default function ChronoSelect() {
     return () => {
       if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current)
     };
-  }, [touchCount, gameState, touches.size]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [touchCount, gameState]);
 
   useEffect(() => {
     clearTimeout(inactiveTimerId.current);
@@ -305,7 +318,6 @@ export default function ChronoSelect() {
     return () => clearTimeout(inactiveTimerId.current);
   }, [gameState, touches.size]);
 
-  const { playTick: playTickSound } = useSound();
   useEffect(() => {
     if (countdownIntervalId.current) {
         clearInterval(countdownIntervalId.current);
@@ -313,7 +325,7 @@ export default function ChronoSelect() {
 
     if (gameState === 'COUNTDOWN') {
       setCountdown(COUNTDOWN_SECONDS);
-      playTickSound(1);
+      playTick(1);
       gameSpeed.current = 1;
 
       const intervalId = setInterval(() => {
@@ -321,7 +333,7 @@ export default function ChronoSelect() {
           const newCount = prevCountdown - 1;
           if (newCount > 0) {
             gameSpeed.current += 0.5;
-            playTickSound(gameSpeed.current);
+            playTick(gameSpeed.current);
             return newCount;
           } else {
             clearInterval(intervalId);
@@ -338,7 +350,7 @@ export default function ChronoSelect() {
         clearInterval(countdownIntervalId.current);
       }
     };
-  }, [gameState, playTickSound]);
+  }, [gameState, playTick]);
 
   useEffect(() => {
     if (gameState === 'RESULT' && !Array.from(touches.values()).some(t => t.isWinner || t.isLoser || t.team)) {
