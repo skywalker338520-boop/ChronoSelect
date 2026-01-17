@@ -5,6 +5,9 @@ import type { TouchPoint } from '@/lib/types';
 import { useSound } from '@/hooks/use-sound';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
@@ -377,11 +380,28 @@ export default function ChronoSelect() {
         onContextMenu={handleContextMenu}
     >
         <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-        <div className="absolute top-4 right-4 flex items-center space-x-3 z-10 pointer-events-auto">
-            <Label htmlFor="team-mode" className="text-primary font-headline">
-                Split into 2 Teams
-            </Label>
-            <Switch id="team-mode" checked={isTeamMode} onCheckedChange={setIsTeamMode} disabled={gameState !== 'IDLE' && gameState !== 'WAITING'} />
+        <div className="absolute top-4 right-4 z-10 pointer-events-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-6 w-6 text-primary" />
+                <span className="sr-only">Settings</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto mr-4">
+              <div className="flex items-center space-x-3">
+                <Label htmlFor="team-mode" className="font-headline">
+                    Split into 2 Teams
+                </Label>
+                <Switch
+                    id="team-mode"
+                    checked={isTeamMode}
+                    onCheckedChange={setIsTeamMode}
+                    disabled={gameState !== 'IDLE' && gameState !== 'WAITING'}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {showInactivePrompt && (
