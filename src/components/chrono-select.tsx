@@ -37,6 +37,27 @@ const getDistinctHue = (existingHues: number[]): number => {
     return newHue;
 }
 
+// Fisher-Yates (aka Knuth) Shuffle. A robust way to ensure randomness.
+const shuffleArray = <T>(array: T[]): T[] => {
+    const newArray = [...array];
+    let currentIndex = newArray.length, randomIndex;
+
+    // While there remain elements to shuffle.
+    while (currentIndex !== 0) {
+        // Pick a remaining element.
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element.
+        [newArray[currentIndex], newArray[randomIndex]] = [
+            newArray[randomIndex], newArray[currentIndex]
+        ];
+    }
+
+    return newArray;
+}
+
+
 export default function ChronoSelect() {
   const [touches, setTouches] = useState<Map<number, TouchPoint>>(new Map());
   const [gameState, setGameState] = useState<'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT'>('IDLE');
@@ -344,7 +365,7 @@ export default function ChronoSelect() {
       
       if (gameMode === 'teamSplit') {
         playTeamSplitSound();
-        const shuffled = [...currentTouches].sort(() => 0.5 - Math.random());
+        const shuffled = shuffleArray(currentTouches);
         const mid = Math.ceil(shuffled.length / 2);
         const teams = { A: shuffled.slice(0, mid), B: shuffled.slice(mid) };
         
@@ -371,7 +392,8 @@ export default function ChronoSelect() {
         if (currentTouches.length > 1) {
           playLoserSound();
         }
-        const winner = currentTouches[Math.floor(Math.random() * currentTouches.length)];
+        const shuffledTouches = shuffleArray(currentTouches);
+        const winner = shuffledTouches[0];
 
         setTouches(current => {
           const newTouches = new Map(current);
