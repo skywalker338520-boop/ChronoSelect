@@ -42,7 +42,6 @@ export default function ChronoSelect() {
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState<boolean | undefined>(undefined);
   const [magicCircleImg, setMagicCircleImg] = useState<HTMLImageElement | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -249,15 +248,8 @@ export default function ChronoSelect() {
   }, [resetGame, touches.size]);
 
   useEffect(() => {
-    if (isTouchDevice === undefined) {
-      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      setIsTouchDevice(isTouch);
-    }
-  }, [isTouchDevice]);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || isTouchDevice === undefined) return;
+    if (!canvas) return;
 
     const resizeCanvas = () => {
         canvas.width = window.innerWidth;
@@ -266,12 +258,10 @@ export default function ChronoSelect() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    if (isTouchDevice) {
-        window.addEventListener('touchstart', handleTouchStart, { passive: false });
-        window.addEventListener('touchmove', handleTouchMove, { passive: false });
-        window.addEventListener('touchend', handleTouchEnd, { passive: false });
-        window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
-    }
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('contextmenu', handleContextMenu);
@@ -280,18 +270,16 @@ export default function ChronoSelect() {
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      if (isTouchDevice) {
-        window.removeEventListener('touchstart', handleTouchStart);
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('touchend', handleTouchEnd);
-        window.removeEventListener('touchcancel', handleTouchEnd);
-      }
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('contextmenu', handleContextMenu);
       
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [isTouchDevice, handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
 
   const touchCount = touches.size;
   useEffect(() => {
