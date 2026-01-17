@@ -129,7 +129,7 @@ export default function ChronoSelect() {
 
         if(touch.team) {
             ctx.fillStyle = "white";
-            ctx.font = `bold ${touch.size / 3}px "Space Grotesk"`;
+            ctx.font = `bold ${touch.size / 3}px -apple-system, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.shadowColor = "transparent"; // No shadow for text
@@ -219,6 +219,11 @@ export default function ChronoSelect() {
 
   // --- React Event Handlers ---
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Allow events to pass through to the settings popover
+    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) {
+      return;
+    }
     e.preventDefault();
     if (e.button !== 0) return;
     isMouseDown.current = true;
@@ -237,6 +242,11 @@ export default function ChronoSelect() {
   };
   
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Allow events to pass through to the settings popover
+    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) {
+      return;
+    }
     e.preventDefault();
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerDown(touch.clientX, touch.clientY, touch.identifier);
