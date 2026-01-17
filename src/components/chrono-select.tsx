@@ -209,32 +209,37 @@ export default function ChronoSelect() {
   }, [resetGame]);
 
   useEffect(() => {
-    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouchDevice(isTouch);
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: false });
-    window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
-    
-    // Mouse events for desktop testing
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('contextmenu', handleContextMenu);
+    if (isTouch) {
+        window.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd, { passive: false });
+        window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    } else {
+        // Mouse events for desktop testing
+        window.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('contextmenu', handleContextMenu);
+    }
 
     animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
-      
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('contextmenu', handleContextMenu);
+      if (isTouch) {
+        window.removeEventListener('touchstart', handleTouchStart);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
+        window.removeEventListener('touchcancel', handleTouchEnd);
+      } else {
+        window.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('contextmenu', handleContextMenu);
+      }
 
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
