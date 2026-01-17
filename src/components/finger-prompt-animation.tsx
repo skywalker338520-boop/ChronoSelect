@@ -13,12 +13,20 @@ const FingerPromptAnimation = () => {
                 }}
             >
                 <path
-                    d="M15 14h.01M11 14h.01M7 14h.01M11 10h.01M7 10h.01M21 12a9 9 0 1 1-9-9c2.5.4 4.5 1.4 5.9 2.8M18.8 9.3a4.5 4.5 0 1 0 15 15.6"
+                    d="M12 13V9"
                     stroke="currentColor"
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 />
+                <path
+                    d="M16 17a4 4 0 1 1-8 0a4 4 0 0 1 8 0z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                />
+                <circle cx="12" cy="7" r="2" stroke="currentColor" strokeWidth="1.5" />
             </svg>
         </div>
     );
