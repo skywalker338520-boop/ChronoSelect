@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 
 export function useSound() {
@@ -53,28 +53,28 @@ export function useSound() {
     };
   }, []);
 
-  const playTick = (rate: number) => {
+  const playTick = useCallback((rate: number) => {
     if (!synths.current) return;
     const freq = rate > 1.5 ? 'C5' : 'C4';
     synths.current.tick.triggerAttackRelease(freq, '8n', Tone.now());
-  };
+  }, []);
 
-  const playWinnerSound = () => {
+  const playWinnerSound = useCallback(() => {
     if (!synths.current) return;
     const now = Tone.now();
     synths.current.whoosh.triggerAttackRelease('0.5n', now);
     synths.current.ding.triggerAttackRelease('C6', '0.5n', now + 0.2);
-  };
+  }, []);
 
-  const playTeamSplitSound = () => {
+  const playTeamSplitSound = useCallback(() => {
     if (!synths.current) return;
     const now = Tone.now();
     synths.current.whoosh.triggerAttackRelease('0.3n', now);
     synths.current.ding.triggerAttackRelease('G4', '0.2n', now + 0.1);
     synths.current.ding.triggerAttackRelease('C5', '0.2n', now + 0.3);
-  };
+  }, []);
   
-  const playLoserSound = () => {
+  const playLoserSound = useCallback(() => {
     if (!synths.current) return;
     const now = Tone.now();
     const synth = new Tone.NoiseSynth({
@@ -83,7 +83,7 @@ export function useSound() {
     }).toDestination();
     synth.triggerAttackRelease('0.6n', now);
     setTimeout(() => synth.dispose(), 1000);
-  };
+  }, []);
 
   return { playTick, playWinnerSound, playTeamSplitSound, playLoserSound };
 }

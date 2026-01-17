@@ -256,42 +256,46 @@ export default function ChronoSelect() {
     }
     
     return () => clearTimeout(preCountdownTimerId.current);
-  }, [touches.size, gameState]);
+  }, [touches, gameState]);
 
   useEffect(() => {
+    clearTimeout(inactiveTimerId.current);
     if (gameState === 'IDLE' && touches.size === 0) {
       inactiveTimerId.current = setTimeout(() => setShowInactivePrompt(true), INACTIVITY_TIMEOUT);
     } else {
-      clearTimeout(inactiveTimerId.current);
       setShowInactivePrompt(false);
     }
+    return () => clearTimeout(inactiveTimerId.current);
+  }, [gameState, touches.size]);
 
-    if (gameState === 'COUNTDOWN') {
-      let count = COUNTDOWN_SECONDS;
-      setCountdown(count);
-      playTick(1);
-
-      countdownIntervalId.current = setInterval(() => {
-        count--;
-        setCountdown(count);
-        gameSpeed.current += 0.5;
-        if (count > 0) {
-          playTick(gameSpeed.current);
-        } else {
-          clearInterval(countdownIntervalId.current);
-          setGameState('RESULT');
-        }
-      }, 1000);
-    } else {
+  useEffect(() => {
+    if (gameState !== 'COUNTDOWN') {
+      clearInterval(countdownIntervalId.current);
       gameSpeed.current = 1;
-      clearInterval(countdownIntervalId.current);
+      return;
     }
 
-    return () => {
-      clearTimeout(inactiveTimerId.current);
-      clearInterval(countdownIntervalId.current);
-    }
-  }, [gameState, touches.size, playTick]);
+    setCountdown(COUNTDOWN_SECONDS);
+    playTick(1);
+    gameSpeed.current = 1;
+
+    countdownIntervalId.current = setInterval(() => {
+      setCountdown(prevCountdown => {
+        const newCount = prevCountdown - 1;
+        if (newCount > 0) {
+          gameSpeed.current += 0.5;
+          playTick(gameSpeed.current);
+          return newCount;
+        } else {
+          clearInterval(countdownIntervalId.current!);
+          setGameState('RESULT');
+          return 0;
+        }
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownIntervalId.current);
+  }, [gameState, playTick]);
 
   useEffect(() => {
     if (gameState === 'RESULT') {
