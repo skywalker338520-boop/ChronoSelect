@@ -5,7 +5,6 @@ import type { TouchPoint } from '@/lib/types';
 import { useSound } from '@/hooks/use-sound';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import FingerPromptAnimation from './finger-prompt-animation';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
@@ -76,7 +75,7 @@ export default function ChronoSelect() {
 
         if (gameState === 'RESULT' && touch.isWinner) {
             // Expand to fill screen, stop breathing.
-            updatedTouch.size *= 1.013;
+            updatedTouch.size *= 1.0765;
         } else if (gameState === 'RESULT' && touch.isLoser) {
             // Shrink and fade faster.
             updatedTouch.size *= 0.9;
@@ -387,7 +386,7 @@ export default function ChronoSelect() {
 
         {showInactivePrompt && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <FingerPromptAnimation />
+                <p className="text-white text-4xl font-headline animate-pulse">Tap Here</p>
             </div>
         )}
     </div>
