@@ -6,9 +6,9 @@ export type Particle = {
   speed: number;
   vx: number;
   vy: number;
-  life: number;
   size: number;
   color: string;
+  history: Array<{ x: number; y: number }>;
 };
 
 export type TouchPoint = {
