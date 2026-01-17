@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -6,13 +5,14 @@ import type { TouchPoint } from '@/lib/types';
 import { useSound } from '@/hooks/use-sound';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import FingerPromptAnimation from './finger-prompt-animation';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 
-const BASE_CIRCLE_SIZE = 138;
+const BASE_CIRCLE_SIZE = 130.345;
 
 const getDistinctHue = (existingHues: number[]): number => {
     const MIN_HUE_DIFFERENCE = 30; // degrees
@@ -76,7 +76,7 @@ export default function ChronoSelect() {
 
         if (gameState === 'RESULT' && touch.isWinner) {
             // Expand to fill screen, stop breathing.
-            updatedTouch.size *= 1.0065;
+            updatedTouch.size *= 1.008625;
         } else if (gameState === 'RESULT' && touch.isLoser) {
             // Shrink and fade faster.
             updatedTouch.size *= 0.9;
@@ -387,9 +387,7 @@ export default function ChronoSelect() {
 
         {showInactivePrompt && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <h1 className="text-4xl md:text-5xl font-headline text-primary">
-                    Tag Your Finger
-                </h1>
+                <FingerPromptAnimation />
             </div>
         )}
     </div>
