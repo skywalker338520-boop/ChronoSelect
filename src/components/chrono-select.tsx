@@ -51,6 +51,9 @@ export default function ChronoSelect() {
   const preCountdownTimerId = useRef<NodeJS.Timeout>();
   const touchIdCounter = useRef(0);
 
+  const isMouseDown = useRef(false);
+  const mouseId = useRef<number | null>(null);
+
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
 
   useEffect(() => {
@@ -210,6 +213,10 @@ export default function ChronoSelect() {
       resetGame();
       return;
     }
+    
+    isMouseDown.current = true;
+    const id = touchIdCounter.current++;
+    mouseId.current = id;
 
     clearTimeout(inactiveTimerId.current);
     setShowInactivePrompt(false);
@@ -218,13 +225,11 @@ export default function ChronoSelect() {
       if (currentTouches.size >= MAX_TOUCHES) return currentTouches;
 
       const newTouches = new Map(currentTouches);
-      const touchId = touchIdCounter.current++;
-      
       const existingHues = Array.from(newTouches.values()).map(t => t.hue);
       const newHue = getDistinctHue(existingHues);
 
-      newTouches.set(touchId, {
-          id: touchId,
+      newTouches.set(id, {
+          id: id,
           x: e.clientX,
           y: e.clientY,
           isWinner: false,
@@ -242,6 +247,33 @@ export default function ChronoSelect() {
     });
   }, [gameState, resetGame]);
 
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+      if (!isMouseDown.current || mouseId.current === null) return;
+
+      setTouches(currentTouches => {
+          const newTouches = new Map(currentTouches);
+          const touch = newTouches.get(mouseId.current!);
+          if (touch) {
+              newTouches.set(mouseId.current!, { ...touch, x: e.clientX, y: e.clientY });
+          }
+          return newTouches;
+      });
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+      if (!isMouseDown.current || mouseId.current === null) return;
+      
+      isMouseDown.current = false;
+      
+      setTouches(currentTouches => {
+          const newTouches = new Map(currentTouches);
+          newTouches.delete(mouseId.current!);
+          if (newTouches.size === 0) setGameState('IDLE');
+          return newTouches;
+      });
+      mouseId.current = null;
+  }, []);
+
   const handleContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault();
     if(touches.size > 0) resetGame();
@@ -258,12 +290,16 @@ export default function ChronoSelect() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
+    // Touch events
     window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd, { passive: false });
     window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     
+    // Mouse events
     window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('contextmenu', handleContextMenu);
 
     animationFrameId.current = requestAnimationFrame(animate);
@@ -275,11 +311,13 @@ export default function ChronoSelect() {
       window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('touchcancel', handleTouchEnd);
       window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('contextmenu', handleContextMenu);
       
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
+  }, [animate, handleContextMenu, handleMouseDown, handleMouseMove, handleMouseUp, handleTouchEnd, handleTouchMove, handleTouchStart]);
 
   const touchCount = touches.size;
   useEffect(() => {

@@ -9,7 +9,7 @@ const ChronoSelect = dynamic(() => import('@/components/chrono-select'), {
 
 export default function Home() {
   return (
-    <main className="h-screen w-screen overflow-hidden bg-black touch-none">
+    <main className="h-screen w-screen overflow-hidden bg-black">
       <ChronoSelect />
     </main>
   );
