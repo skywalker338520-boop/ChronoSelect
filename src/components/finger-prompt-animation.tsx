@@ -17,16 +17,12 @@ const FingerPromptAnimation = () => {
                         className="w-full h-full text-white"
                         style={{ filter: "drop-shadow(0 4px 6px rgba(255, 255, 255, 0.2))" }}
                     >
-                        <path d="M12 11.83v8.17" />
-                        <path d="M9.9 9.73a2.5 2.5 0 0 1 4.2 0" />
-                        <path d="M11.05 15.34a2 2 0 0 1 1.9 0" />
-                        <path d="M14.6 11.2a2 2 0 0 1 2.9 0" />
-                        <path d="M7.4 11.2a2 2 0 0 1 2.9 0" />
-                        <path d="M17.5 14.3a2 2 0 0 1 2.9 0" />
-                        <path d="M4.5 14.3a2 2 0 0 1 2.9 0" />
-                        <path d="M13.5 6.4a2 2 0 0 1 1.1 3.4" />
-                        <path d="M10.5 6.4a2 2 0 0 0-1.1 3.4" />
-                        <path d="M12 3a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V4a1 1 0 0 1 1-1z" />
+                        <path d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5" />
+                        <path d="M11 11.5v-2a1.5 1.5 0 0 1 3 0v2.5" />
+                        <path d="M14 10.5a1.5 1.5 0 0 1 3 0v1.5" />
+                        <path d="M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-2a6 6 0 0 1-5.2-3" />
+                        <path d="M3.5 12.5a2.5 2.5 0 0 1 3-1.5" />
+                        <path d="M14.5 5.5a1.5 1.5 0 0 1 3 0" />
                     </svg>
                 </div>
                 
@@ -39,9 +35,6 @@ const FingerPromptAnimation = () => {
                     }}
                 ></div>
             </div>
-            <p className="mt-4 text-2xl font-headline text-primary">
-                Touch the Screen
-            </p>
         </div>
     );
 };
