@@ -11,7 +11,7 @@ const PARTICLE_COUNT = 12;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
-const TRAIL_LENGTH = 53;
+const TRAIL_LENGTH = 80;
 
 const createParticle = (touchX: number, touchY: number): Particle => {
   const angle = Math.random() * Math.PI * 2;
@@ -21,10 +21,11 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: (Math.random() * 0.00221 + 0.001105) * 1.3,
+    speed: (Math.random() * 0.00221 + 0.001105) * 1.6,
     size: 1,
     color: 'white',
     history: [],
+    opacity: 1,
   };
 };
 
@@ -73,12 +74,11 @@ export default function ChronoSelect() {
 
     setTouches(currentTouches => {
       const newTouches = new Map(currentTouches);
-      const winnerTouch = !isTeamMode ? Array.from(newTouches.values()).find(t => t.isWinner) : null;
 
       newTouches.forEach((touch, id) => {
         const updatedParticles: Particle[] = [];
         
-        if (!winnerTouch || touch.isWinner) {
+        if (gameState !== 'RESULT' || !touch.isLoser) {
             ctx.beginPath();
             ctx.arc(touch.x, touch.y, 15, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(10, 10, 10, 0.8)';
@@ -93,31 +93,50 @@ export default function ChronoSelect() {
             particle.history.shift();
           }
 
-          if (gameState === 'RESULT' && winnerTouch) {
-              particle.angle += particle.speed;
-              particle.x = winnerTouch.x + Math.cos(particle.angle) * particle.radius;
-              particle.y = winnerTouch.y + Math.sin(particle.angle) * particle.radius;
+          let speedMultiplier = 1;
+          if (gameState === 'COUNTDOWN') {
+            speedMultiplier = 1 + (COUNTDOWN_SECONDS - countdown) * 0.5;
+          }
+          
+          if (gameState === 'RESULT' && !isTeamMode) {
+              if (touch.isWinner) {
+                particle.speed += 0.0002;
+                particle.angle += particle.speed;
+                particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
+                particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
+              } else if (touch.isLoser) {
+                particle.speed *= 0.97;
+                particle.opacity = Math.max(0, particle.opacity - 0.007);
+                
+                particle.angle += particle.speed;
+                particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
+                particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
+              }
           } else { 
-            particle.angle += particle.speed;
+            particle.angle += particle.speed * speedMultiplier;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
           }
 
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.strokeStyle = `hsla(${touch.hue}, 100%, 75%, 1)`;
-          ctx.lineWidth = particle.size * 2;
-          ctx.beginPath();
-          if (particle.history.length > 1) {
-              ctx.moveTo(particle.history[0].x, particle.history[0].y);
-              for (let i = 1; i < particle.history.length; i++) {
-                  ctx.lineTo(particle.history[i].x, particle.history[i].y);
+          if (particle.opacity > 0) {
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.strokeStyle = `hsla(${touch.hue}, 100%, 75%, ${particle.opacity})`;
+              ctx.lineWidth = particle.size * 2;
+              ctx.beginPath();
+              if (particle.history.length > 1) {
+                  ctx.moveTo(particle.history[0].x, particle.history[0].y);
+                  for (let i = 1; i < particle.history.length; i++) {
+                      ctx.lineTo(particle.history[i].x, particle.history[i].y);
+                  }
+                  ctx.lineTo(particle.x, particle.y); 
               }
-              ctx.lineTo(particle.x, particle.y); 
+              ctx.stroke();
           }
-          ctx.stroke();
-
-          updatedParticles.push(particle);
+          
+          if (!(gameState === 'RESULT' && touch.isLoser && particle.opacity <= 0)) {
+            updatedParticles.push(particle);
+          }
         });
         
         newTouches.set(id, { ...touch, particles: updatedParticles });
@@ -127,7 +146,7 @@ export default function ChronoSelect() {
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, isTeamMode]);
+  }, [gameState, isTeamMode, countdown]);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     e.preventDefault();

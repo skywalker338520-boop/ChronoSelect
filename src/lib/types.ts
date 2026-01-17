@@ -7,6 +7,7 @@ export type Particle = {
   size: number;
   color: string;
   history: Array<{ x: number; y: number }>;
+  opacity: number;
 };
 
 export type TouchPoint = {
