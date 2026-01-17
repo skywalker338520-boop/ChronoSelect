@@ -266,42 +266,28 @@ export default function ChronoSelect() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    let usingTouch = false;
-    const touchStartHandler = (e: TouchEvent) => {
-      usingTouch = true;
-      handleTouchStart(e);
-    }
-    const mouseDownHandler = (e: MouseEvent) => {
-      if(usingTouch) return;
-      handleMouseDown(e);
-    }
-    const contextMenuHandler = (e: MouseEvent) => {
-        if(usingTouch) return;
-        handleContextMenu(e);
-    }
-
     if (isTouchDevice) {
-        window.addEventListener('touchstart', touchStartHandler, { passive: false });
+        window.addEventListener('touchstart', handleTouchStart, { passive: false });
         window.addEventListener('touchmove', handleTouchMove, { passive: false });
         window.addEventListener('touchend', handleTouchEnd, { passive: false });
         window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     }
     
-    window.addEventListener('mousedown', mouseDownHandler);
-    window.addEventListener('contextmenu', contextMenuHandler);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('contextmenu', handleContextMenu);
 
     animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
       if (isTouchDevice) {
-        window.removeEventListener('touchstart', touchStartHandler);
+        window.removeEventListener('touchstart', handleTouchStart);
         window.removeEventListener('touchmove', handleTouchMove);
         window.removeEventListener('touchend', handleTouchEnd);
         window.removeEventListener('touchcancel', handleTouchEnd);
       }
-      window.removeEventListener('mousedown', mouseDownHandler);
-      window.removeEventListener('contextmenu', contextMenuHandler);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('contextmenu', handleContextMenu);
       
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
