@@ -20,10 +20,10 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: Math.random() * 0.0013 + 0.00065,
+    speed: (Math.random() * 0.0013 + 0.00065) * 1.3,
     vx: 0,
     vy: 0,
-    life: Math.random() * 0.4 + 0.8,
+    life: 1, // Particles now live forever within a round
     size: 1,
     color: 'white',
   };
@@ -95,27 +95,20 @@ export default function ChronoSelect() {
               particle.angle += particle.speed;
               particle.x = winnerTouch.x + Math.cos(particle.angle) * particle.radius;
               particle.y = winnerTouch.y + Math.sin(particle.angle) * particle.radius;
-              particle.life = 1; 
           } else if (touch.isWinner || touch.isLoser) {
             particle.x += particle.vx;
             particle.y += particle.vy;
-            particle.life -= 0.0005;
           } else { 
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-            particle.life -= 0.0005; 
           }
 
-          if (particle.life > 0) {
-            ctx.beginPath();
-            ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, 1)`;
-            ctx.fill();
-            updatedParticles.push(particle);
-          } else if (gameState !== 'RESULT') {
-            updatedParticles.push(createParticle(touch.x, touch.y));
-          }
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, 1)`;
+          ctx.fill();
+          updatedParticles.push(particle);
         });
         
         newTouches.set(id, { ...touch, particles: updatedParticles });
