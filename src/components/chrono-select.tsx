@@ -23,7 +23,7 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     speed: Math.random() * 0.02 + 0.01,
     vx: 0,
     vy: 0,
-    life: 1,
+    life: Math.random() * 0.8 + 0.2, // Random life between 0.2 and 1.0 for varied trail length
     size: 1, // All particles same size
     color: 'white',
   };
@@ -71,8 +71,9 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    // The canvas is not cleared on every frame to create solid, non-fading trails.
-    // It's only cleared when the game resets or goes idle.
+    // Add back the fade effect to create trails of limited length
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
       const newTouches = new Map(currentTouches);
@@ -106,14 +107,18 @@ export default function ChronoSelect() {
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
+            particle.life -= 0.01; // Decrease life over time
           }
 
           if (particle.life > 0) {
             ctx.beginPath();
             ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, ${particle.life})`;
+            ctx.fillStyle = `hsla(${touch.hue}, 100%, 75%, 1)`; // Solid color
             ctx.fill();
             updatedParticles.push(particle);
+          } else if (gameState !== 'RESULT') {
+            // Respawn particle if it dies to maintain particle count
+            updatedParticles.push(createParticle(touch.x, touch.y));
           }
         });
         
@@ -278,7 +283,7 @@ export default function ChronoSelect() {
 
     if (touches.size >= 2 && gameState === 'WAITING') {
       preCountdownTimerId.current = setTimeout(() => {
-        if (gameState === 'WAITING') {
+        if (touches.size >= 2) {
             setGameState('COUNTDOWN');
         }
       }, PRE_COUNTDOWN_DELAY);
