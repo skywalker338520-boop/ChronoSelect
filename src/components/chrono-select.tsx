@@ -85,13 +85,12 @@ export default function ChronoSelect() {
         
         if (gameState === 'RESULT') {
             if (touch.isWinner) {
-                 // Large, bright, pulsing
-                const winnerBreath = Math.sin(updatedTouch.animationPhase * 2) * (updatedTouch.baseSize * 0.2);
-                updatedTouch.size = updatedTouch.baseSize * 1.2 + winnerBreath;
+                // Expand to fill screen, stop breathing
+                updatedTouch.size *= 1.25;
             } else if (touch.isLoser) {
-                // Shrink and fade
-                updatedTouch.size *= 0.95;
-                updatedTouch.opacity = Math.max(0, touch.opacity - 0.02);
+                // Shrink and fade faster
+                updatedTouch.size *= 0.9;
+                updatedTouch.opacity = Math.max(0, touch.opacity - 0.05);
             } else if (touch.team) {
                 const teamBreath = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1);
                 updatedTouch.size = updatedTouch.baseSize + teamBreath;
@@ -301,12 +300,18 @@ export default function ChronoSelect() {
     if (gameState === 'COUNTDOWN') {
       setCountdown(COUNTDOWN_SECONDS);
       playTick(1);
+      if (navigator.vibrate) {
+        navigator.vibrate(200);
+      }
 
       const intervalId = setInterval(() => {
         setCountdown(prevCountdown => {
           const newCount = prevCountdown - 1;
           if (newCount > 0) {
             playTick(1);
+            if (navigator.vibrate) {
+              navigator.vibrate(100);
+            }
             return newCount;
           } else {
             clearInterval(intervalId);
