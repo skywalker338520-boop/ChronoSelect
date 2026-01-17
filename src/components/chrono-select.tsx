@@ -20,10 +20,10 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     y: touchY,
     radius: radius,
     angle: angle,
-    speed: Math.random() * 0.005 + 0.002,
+    speed: Math.random() * 0.0013 + 0.00065,
     vx: 0,
     vy: 0,
-    life: Math.random() * 0.6 + 0.6, // Longer trails, longer min length
+    life: Math.random() * 0.4 + 0.8,
     size: 1,
     color: 'white',
   };
@@ -71,7 +71,7 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
@@ -99,12 +99,12 @@ export default function ChronoSelect() {
           } else if (touch.isWinner || touch.isLoser) {
             particle.x += particle.vx;
             particle.y += particle.vy;
-            particle.life -= 0.007;
+            particle.life -= 0.0005;
           } else { 
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-            particle.life -= 0.0015; 
+            particle.life -= 0.0005; 
           }
 
           if (particle.life > 0) {
