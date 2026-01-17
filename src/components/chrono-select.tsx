@@ -405,10 +405,10 @@ export default function ChronoSelect() {
             } else { 
                 if(isWinner) {
                     const highSpeedParticles = touch.particles.map(p => ({ ...p, speed: 0.012 })); // High constant speed
-                    newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120, particles: highSpeedParticles });
+                    newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, particles: highSpeedParticles });
                 } else if (isLoser) {
                     playLoserSound();
-                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0 });
+                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null });
                 }
             }
         });
