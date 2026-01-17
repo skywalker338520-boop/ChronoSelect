@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 150;
+const PARTICLE_COUNT = 300;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -24,7 +24,7 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     vx: 0,
     vy: 0,
     life: 1,
-    size: 1.5,
+    size: 1,
     color: 'white',
   };
 };
@@ -62,9 +62,6 @@ export default function ChronoSelect() {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     setTouches(currentTouches => {
       const newTouches = new Map(currentTouches);
@@ -388,6 +385,17 @@ export default function ChronoSelect() {
       return () => clearTimeout(resetTimeout);
     }
   }, [gameState, touches, isTeamMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
+
+  useEffect(() => {
+    if (gameState === 'IDLE' && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  }, [gameState]);
 
   const getWinnerText = () => {
     if (isTeamMode) return "TEAMS";
