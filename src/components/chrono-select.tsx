@@ -64,14 +64,6 @@ export default function ChronoSelect() {
 
   // Reset game state
   const resetGame = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
     setTouches(new Map());
     setGameState('IDLE');
     setShowInactivePrompt(false);
@@ -80,24 +72,16 @@ export default function ChronoSelect() {
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
   }, []);
 
-  // Animation loop
+  // Animation loop for STATE UPDATES
   const animate = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || !canvas) return;
-
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    if (!magicCircleImg) {
-        animationFrameId.current = requestAnimationFrame(animate);
-        return;
-    }
-
     setTouches(currentTouches => {
-      const newTouches = new Map(currentTouches);
-
-      newTouches.forEach((touch, id) => {
+      // If there are no touches, no need to update anything.
+      if (currentTouches.size === 0) {
+        return currentTouches;
+      }
+      
+      const newTouches = new Map();
+      currentTouches.forEach((touch, id) => {
         let updatedTouch = { ...touch };
         
         let speedMultiplier = 1;
@@ -116,26 +100,39 @@ export default function ChronoSelect() {
         
         updatedTouch.rotation += updatedTouch.rotationSpeed * speedMultiplier;
 
-        ctx.save();
-        ctx.translate(updatedTouch.x, updatedTouch.y);
-        ctx.rotate(updatedTouch.rotation);
-        ctx.globalAlpha = updatedTouch.opacity;
-        ctx.filter = `hue-rotate(${touch.hue}deg) brightness(1.2)`;
-        ctx.drawImage(magicCircleImg, -touch.size / 2, -touch.size / 2, touch.size, touch.size);
-        ctx.restore();
-        
-        if (gameState === 'RESULT' && touch.isLoser && updatedTouch.opacity <= 0) {
-          newTouches.delete(id);
-        } else {
-          newTouches.set(id, updatedTouch);
+        if (!(gameState === 'RESULT' && touch.isLoser && updatedTouch.opacity <= 0)) {
+           newTouches.set(id, updatedTouch);
         }
       });
-
       return newTouches;
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [magicCircleImg, gameState, countdown]);
+  }, [gameState, countdown]);
+
+  // useEffect for DRAWING
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas) return;
+
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!magicCircleImg) {
+        return;
+    }
+
+    touches.forEach((touch) => {
+        ctx.save();
+        ctx.translate(touch.x, touch.y);
+        ctx.rotate(touch.rotation);
+        ctx.globalAlpha = touch.opacity;
+        ctx.filter = `hue-rotate(${touch.hue}deg) brightness(1.2)`;
+        ctx.drawImage(magicCircleImg, -touch.size / 2, -touch.size / 2, touch.size, touch.size);
+        ctx.restore();
+    });
+  }, [touches, magicCircleImg]);
   
   // Resize canvas and start animation loop
   useEffect(() => {
@@ -356,20 +353,9 @@ export default function ChronoSelect() {
     }
   }, [gameState, touches, isTeamMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
 
-  useEffect(() => {
-    if (gameState === 'IDLE' && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-  }, [gameState]);
-
   return (
     <div 
-        className="relative h-full w-full bg-black cursor-none"
+        className="relative h-full w-full bg-black"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
