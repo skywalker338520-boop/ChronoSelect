@@ -119,27 +119,29 @@ export default function ChronoSelect() {
     clearTimeout(inactiveTimerId.current);
     setShowInactivePrompt(false);
 
-    const newTouches = new Map(touches);
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      if (newTouches.size >= MAX_TOUCHES) break;
+    setTouches(currentTouches => {
+      const newTouches = new Map(currentTouches);
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (newTouches.size >= MAX_TOUCHES) break;
 
-      const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(touch.clientX, touch.clientY));
-      
-      newTouches.set(touch.identifier, {
-        id: touch.identifier,
-        x: touch.clientX,
-        y: touch.clientY,
-        particles: particles,
-        isWinner: false,
-        isLoser: false,
-        team: null,
-        hue: (newTouches.size * 36) % 360,
-      });
-    }
-    setTouches(newTouches);
-    setGameState('WAITING');
-  }, [touches, gameState, resetGame]);
+        const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(touch.clientX, touch.clientY));
+        
+        newTouches.set(touch.identifier, {
+          id: touch.identifier,
+          x: touch.clientX,
+          y: touch.clientY,
+          particles: particles,
+          isWinner: false,
+          isLoser: false,
+          team: null,
+          hue: (newTouches.size * 36) % 360,
+        });
+      }
+      setGameState('WAITING');
+      return newTouches;
+    });
+  }, [gameState, resetGame]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     e.preventDefault();
@@ -179,30 +181,33 @@ export default function ChronoSelect() {
       resetGame();
       return;
     }
-    if (touches.size >= MAX_TOUCHES) return;
 
     clearTimeout(inactiveTimerId.current);
     setShowInactivePrompt(false);
 
-    const newTouches = new Map(touches);
-    const touchId = touchIdCounter.current++;
-    
-    const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(e.clientX, e.clientY));
-    
-    newTouches.set(touchId, {
-        id: touchId,
-        x: e.clientX,
-        y: e.clientY,
-        particles: particles,
-        isWinner: false,
-        isLoser: false,
-        team: null,
-        hue: (newTouches.size * 36) % 360,
+    setTouches(currentTouches => {
+      if (currentTouches.size >= MAX_TOUCHES) return currentTouches;
+
+      const newTouches = new Map(currentTouches);
+      const touchId = touchIdCounter.current++;
+      
+      const particles = Array.from({ length: PARTICLE_COUNT }, () => createParticle(e.clientX, e.clientY));
+      
+      newTouches.set(touchId, {
+          id: touchId,
+          x: e.clientX,
+          y: e.clientY,
+          particles: particles,
+          isWinner: false,
+          isLoser: false,
+          team: null,
+          hue: (newTouches.size * 36) % 360,
+      });
+      
+      setGameState('WAITING');
+      return newTouches;
     });
-    
-    setTouches(newTouches);
-    setGameState('WAITING');
-  }, [touches, gameState, resetGame]);
+  }, [gameState, resetGame]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault();
@@ -224,7 +229,6 @@ export default function ChronoSelect() {
         window.addEventListener('touchend', handleTouchEnd, { passive: false });
         window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     } else {
-        // Mouse events for desktop testing
         window.addEventListener('mousedown', handleMouseDown);
         window.addEventListener('contextmenu', handleContextMenu);
     }
@@ -256,7 +260,7 @@ export default function ChronoSelect() {
     }
     
     return () => clearTimeout(preCountdownTimerId.current);
-  }, [touches, gameState]);
+  }, [touches.size, gameState]);
 
   useEffect(() => {
     clearTimeout(inactiveTimerId.current);
@@ -269,44 +273,47 @@ export default function ChronoSelect() {
   }, [gameState, touches.size]);
 
   useEffect(() => {
-    if (gameState !== 'COUNTDOWN') {
-      clearInterval(countdownIntervalId.current);
+    if (gameState === 'COUNTDOWN') {
+      setCountdown(COUNTDOWN_SECONDS);
+      playTick(1);
       gameSpeed.current = 1;
-      return;
+
+      countdownIntervalId.current = setInterval(() => {
+        setCountdown(prevCountdown => {
+          const newCount = prevCountdown - 1;
+          if (newCount > 0) {
+            gameSpeed.current += 0.5;
+            playTick(gameSpeed.current);
+            return newCount;
+          } else {
+            setGameState('RESULT');
+            return 0;
+          }
+        });
+      }, 1000);
+    } else if (countdownIntervalId.current) {
+      clearInterval(countdownIntervalId.current);
+      countdownIntervalId.current = undefined;
     }
 
-    setCountdown(COUNTDOWN_SECONDS);
-    playTick(1);
-    gameSpeed.current = 1;
-
-    countdownIntervalId.current = setInterval(() => {
-      setCountdown(prevCountdown => {
-        const newCount = prevCountdown - 1;
-        if (newCount > 0) {
-          gameSpeed.current += 0.5;
-          playTick(gameSpeed.current);
-          return newCount;
-        } else {
-          clearInterval(countdownIntervalId.current!);
-          setGameState('RESULT');
-          return 0;
-        }
-      });
-    }, 1000);
-
-    return () => clearInterval(countdownIntervalId.current);
-  }, [gameState, playTick]);
+    return () => {
+      if (countdownIntervalId.current) {
+        clearInterval(countdownIntervalId.current);
+        countdownIntervalId.current = undefined;
+      }
+    };
+  }, [gameState, playTick, setGameState]);
 
   useEffect(() => {
     if (gameState === 'RESULT') {
+      let winner: TouchPoint | null = null;
+      let teams: { A: TouchPoint[], B: TouchPoint[] } | null = null;
+      
       const currentTouches = Array.from(touches.values());
       if (currentTouches.length === 0) {
         resetGame();
         return;
       }
-
-      let winner: TouchPoint | null = null;
-      let teams: { A: TouchPoint[], B: TouchPoint[] } | null = null;
       
       if (isTeamMode) {
         playTeamSplitSound();
@@ -344,9 +351,10 @@ export default function ChronoSelect() {
         return newTouches;
       });
 
-      setTimeout(resetGame, 5000);
+      const resetTimeout = setTimeout(resetGame, 5000);
+      return () => clearTimeout(resetTimeout);
     }
-  }, [gameState, isTeamMode, touches, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
+  }, [gameState, isTeamMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
 
   const getWinnerText = () => {
     if (isTeamMode) return "TEAMS";
