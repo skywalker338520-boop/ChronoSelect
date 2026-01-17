@@ -28,6 +28,27 @@ const createParticle = (touchX: number, touchY: number, index: number, total: nu
   };
 };
 
+const getDistinctHue = (existingHues: number[]): number => {
+    const MIN_HUE_DIFFERENCE = 30; // degrees
+    let newHue: number;
+    let attempts = 0;
+
+    const isTooClose = (hue1: number, hue2: number) => {
+        const diff = Math.abs(hue1 - hue2);
+        return Math.min(diff, 360 - diff) < MIN_HUE_DIFFERENCE;
+    };
+
+    do {
+        newHue = Math.random() * 360;
+        attempts++;
+        if (attempts > 50) { // Failsafe to prevent infinite loop
+            break;
+        }
+    } while (existingHues.some(h => isTooClose(h, newHue)));
+    
+    return newHue;
+}
+
 export default function ChronoSelect() {
   const [touches, setTouches] = useState<Map<number, TouchPoint>>(new Map());
   const [gameState, setGameState] = useState<'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT'>('IDLE');
@@ -151,12 +172,16 @@ export default function ChronoSelect() {
 
     setTouches(currentTouches => {
       const newTouches = new Map(currentTouches);
+      const existingHues = Array.from(newTouches.values()).map(t => t.hue);
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (newTouches.size >= MAX_TOUCHES) break;
 
         const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => createParticle(touch.clientX, touch.clientY, i, PARTICLE_COUNT));
         
+        const newHue = getDistinctHue(existingHues);
+        existingHues.push(newHue);
+
         newTouches.set(touch.identifier, {
           id: touch.identifier,
           x: touch.clientX,
@@ -165,7 +190,7 @@ export default function ChronoSelect() {
           isWinner: false,
           isLoser: false,
           team: null,
-          hue: Math.random() * 360,
+          hue: newHue,
         });
       }
       if (newTouches.size > 0) setGameState('WAITING');
@@ -223,6 +248,9 @@ export default function ChronoSelect() {
       
       const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => createParticle(e.clientX, e.clientY, i, PARTICLE_COUNT));
       
+      const existingHues = Array.from(newTouches.values()).map(t => t.hue);
+      const newHue = getDistinctHue(existingHues);
+
       newTouches.set(touchId, {
           id: touchId,
           x: e.clientX,
@@ -231,7 +259,7 @@ export default function ChronoSelect() {
           isWinner: false,
           isLoser: false,
           team: null,
-          hue: Math.random() * 360,
+          hue: newHue,
       });
       
       if (newTouches.size > 0) setGameState('WAITING');
