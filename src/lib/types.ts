@@ -6,8 +6,8 @@ export type TouchPoint = {
   isLoser: boolean;
   team: 'A' | 'B' | null;
   hue: number;
-  rotation: number;
-  rotationSpeed: number;
   opacity: number;
-  size: number;
+  size: number; // The current animated size
+  baseSize: number; // The base size to calculate breathing from
+  animationPhase: number; // Used for the sin wave of the breathing effect
 };

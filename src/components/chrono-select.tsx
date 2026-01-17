@@ -11,9 +11,7 @@ const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 5;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 
-const MAGIC_CIRCLE_URL = 'https://firebasestorage.googleapis.com/v0/b/genkit-llm-tools.appspot.com/o/image-prompt-images%2F1718012076046_magic_circle.png?alt=media&token=143b62b3-5b8c-45a8-9b88-29402969b768';
-const CIRCLE_SIZE = 250;
-const INITIAL_ROTATION_SPEED = 0.005;
+const BASE_CIRCLE_SIZE = 150;
 
 const getDistinctHue = (existingHues: number[]): number => {
     const MIN_HUE_DIFFERENCE = 30; // degrees
@@ -42,7 +40,6 @@ export default function ChronoSelect() {
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
-  const [magicCircleImg, setMagicCircleImg] = useState<HTMLImageElement | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
@@ -54,13 +51,6 @@ export default function ChronoSelect() {
   const MOUSE_IDENTIFIER = -1; // Use a constant identifier for the mouse
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
-
-  // Load magic circle image
-  useEffect(() => {
-    const img = new Image();
-    img.src = MAGIC_CIRCLE_URL;
-    img.onload = () => setMagicCircleImg(img);
-  }, []);
 
   // Reset game state
   const resetGame = useCallback(() => {
@@ -86,20 +76,28 @@ export default function ChronoSelect() {
         
         let speedMultiplier = 1;
         if (gameState === 'COUNTDOWN') {
-            speedMultiplier = 1 + (COUNTDOWN_SECONDS - countdown + 1) * 0.4;
+            speedMultiplier = 3;
         }
+
+        updatedTouch.animationPhase += 0.02 * speedMultiplier;
+        const breathAmount = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1); // Breathe by 10% of base size
+        updatedTouch.size = updatedTouch.baseSize + breathAmount;
         
         if (gameState === 'RESULT') {
             if (touch.isWinner) {
-                updatedTouch.rotationSpeed = 0.05;
+                 // Large, bright, pulsing
+                const winnerBreath = Math.sin(updatedTouch.animationPhase * 2) * (updatedTouch.baseSize * 0.2);
+                updatedTouch.size = updatedTouch.baseSize * 1.2 + winnerBreath;
             } else if (touch.isLoser) {
-                updatedTouch.rotationSpeed *= 0.98;
-                updatedTouch.opacity = Math.max(0, touch.opacity - 0.015);
+                // Shrink and fade
+                updatedTouch.size *= 0.95;
+                updatedTouch.opacity = Math.max(0, touch.opacity - 0.02);
+            } else if (touch.team) {
+                const teamBreath = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1);
+                updatedTouch.size = updatedTouch.baseSize + teamBreath;
             }
         }
         
-        updatedTouch.rotation += updatedTouch.rotationSpeed * speedMultiplier;
-
         if (!(gameState === 'RESULT' && touch.isLoser && updatedTouch.opacity <= 0)) {
            newTouches.set(id, updatedTouch);
         }
@@ -108,7 +106,7 @@ export default function ChronoSelect() {
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, countdown]);
+  }, [gameState]);
 
   // useEffect for DRAWING
   useEffect(() => {
@@ -119,20 +117,35 @@ export default function ChronoSelect() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (!magicCircleImg) {
-        return;
-    }
-
     touches.forEach((touch) => {
         ctx.save();
-        ctx.translate(touch.x, touch.y);
-        ctx.rotate(touch.rotation);
         ctx.globalAlpha = touch.opacity;
-        ctx.filter = `hue-rotate(${touch.hue}deg) brightness(1.2)`;
-        ctx.drawImage(magicCircleImg, -touch.size / 2, -touch.size / 2, touch.size, touch.size);
+        
+        const color = `hsl(${touch.hue}, 90%, 70%)`;
+        ctx.fillStyle = color;
+        
+        // Glow effect
+        if (gameState !== 'RESULT' || touch.isWinner || touch.team) {
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 30;
+        }
+
+        ctx.beginPath();
+        ctx.arc(touch.x, touch.y, touch.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        if(touch.team) {
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${touch.size / 3}px "Space Grotesk"`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = "transparent"; // No shadow for text
+            ctx.fillText(touch.team, touch.x, touch.y);
+        }
+
         ctx.restore();
     });
-  }, [touches, magicCircleImg]);
+  }, [touches, gameState]);
   
   // Resize canvas and start animation loop
   useEffect(() => {
@@ -174,9 +187,10 @@ export default function ChronoSelect() {
         newTouches.set(id, {
             id, x, y,
             isWinner: false, isLoser: false, team: null, hue: newHue,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: INITIAL_ROTATION_SPEED,
-            opacity: 1, size: CIRCLE_SIZE,
+            opacity: 1,
+            size: BASE_CIRCLE_SIZE,
+            baseSize: BASE_CIRCLE_SIZE,
+            animationPhase: Math.random() * Math.PI * 2, // Start at a random point in the breath cycle
         });
 
         if (newTouches.size > 0) setGameState('WAITING');
