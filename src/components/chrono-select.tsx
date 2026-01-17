@@ -11,7 +11,7 @@ const PARTICLE_COUNT = 12;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
-const TRAIL_LENGTH = 35;
+const TRAIL_LENGTH = 53;
 
 const createParticle = (touchX: number, touchY: number): Particle => {
   const angle = Math.random() * Math.PI * 2;
@@ -22,8 +22,6 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     radius: radius,
     angle: angle,
     speed: (Math.random() * 0.00221 + 0.001105) * 1.3,
-    vx: 0,
-    vy: 0,
     size: 1,
     color: 'white',
     history: [],
@@ -43,7 +41,6 @@ export default function ChronoSelect() {
   const inactiveTimerId = useRef<NodeJS.Timeout>();
   const countdownIntervalId = useRef<NodeJS.Timeout>();
   const preCountdownTimerId = useRef<NodeJS.Timeout>();
-  const gameSpeed = useRef(1);
   const touchIdCounter = useRef(0);
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
@@ -60,7 +57,6 @@ export default function ChronoSelect() {
     setTouches(new Map());
     setGameState('IDLE');
     setShowInactivePrompt(false);
-    gameSpeed.current = 1;
     touchIdCounter.current = 0;
     if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     if (inactiveTimerId.current) clearTimeout(inactiveTimerId.current);
@@ -101,11 +97,8 @@ export default function ChronoSelect() {
               particle.angle += particle.speed;
               particle.x = winnerTouch.x + Math.cos(particle.angle) * particle.radius;
               particle.y = winnerTouch.y + Math.sin(particle.angle) * particle.radius;
-          } else if (touch.isWinner || touch.isLoser) {
-            particle.x += particle.vx;
-            particle.y += particle.vy;
           } else { 
-            particle.angle += particle.speed * gameSpeed.current;
+            particle.angle += particle.speed;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
           }
@@ -335,14 +328,12 @@ export default function ChronoSelect() {
     if (gameState === 'COUNTDOWN') {
       setCountdown(COUNTDOWN_SECONDS);
       playTick(1);
-      gameSpeed.current = 1;
 
       const intervalId = setInterval(() => {
         setCountdown(prevCountdown => {
           const newCount = prevCountdown - 1;
           if (newCount > 0) {
-            gameSpeed.current += 0.5;
-            playTick(gameSpeed.current);
+            playTick(1);
             return newCount;
           } else {
             clearInterval(intervalId);
@@ -384,7 +375,6 @@ export default function ChronoSelect() {
 
       setTouches(current => {
         const newTouches = new Map(current);
-        const winnerTouchForLosers = !isTeamMode ? Array.from(newTouches.values()).find(t => t.id === winner?.id) : null;
 
         newTouches.forEach((touch, id) => {
             const isWinner = !isTeamMode && touch.id === winner?.id;
@@ -392,26 +382,13 @@ export default function ChronoSelect() {
             const isLoser = !isTeamMode && !isWinner;
             
             if (isTeamMode) {
-                const targetX = (team === 'A' ? window.innerWidth * 0.25 : window.innerWidth * 0.75);
-                const targetY = window.innerHeight * 0.5;
-
-                const updatedParticles = touch.particles.map(p => {
-                    const angle = Math.atan2(targetY - p.y, targetX - p.x);
-                    const speed = 15 + Math.random() * 10;
-                    return {...p, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed };
-                });
-                newTouches.set(id, { ...touch, isWinner, isLoser, team, particles: updatedParticles });
+                newTouches.set(id, { ...touch, isWinner, isLoser, team });
             } else { 
                 if(isWinner) {
                     newTouches.set(id, { ...touch, isWinner: true, isLoser: false, team: null, hue: 120 });
-                } else if (isLoser && winnerTouchForLosers) {
+                } else if (isLoser) {
                     playLoserSound();
-                    const updatedParticles = touch.particles.map(p => {
-                        const angle = Math.atan2(winnerTouchForLosers!.y - p.y, winnerTouchForLosers!.x - p.x);
-                        const speed = 15 + Math.random() * 10;
-                        return {...p, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed };
-                    });
-                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0, particles: updatedParticles });
+                    newTouches.set(id, { ...touch, isWinner: false, isLoser: true, team: null, hue: 0 });
                 }
             }
         });

@@ -4,8 +4,6 @@ export type Particle = {
   radius: number;
   angle: number;
   speed: number;
-  vx: number;
-  vy: number;
   size: number;
   color: string;
   history: Array<{ x: number; y: number }>;
