@@ -92,17 +92,11 @@ export default {
           '0%, 40%, 100%': { transform: 'translateY(0) scale(1)' },
           '50%': { transform: 'translateY(10px) scale(0.95)' },
         },
-        'ripple': {
-            '0%, 45%': { transform: 'scale(0)', opacity: '1' },
-            '50%': { transform: 'scale(0.3)', opacity: '1' },
-            '100%': { transform: 'scale(1.5)', opacity: '0' },
-        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'finger-tap': 'finger-tap 2.5s ease-in-out infinite',
-        'ripple': 'ripple 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite',
       },
     },
   },
