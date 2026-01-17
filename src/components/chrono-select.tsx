@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 150;
+const PARTICLE_COUNT = 100;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -102,12 +102,12 @@ export default function ChronoSelect() {
           } else if (touch.isWinner || touch.isLoser) { // For team mode result
             particle.x += particle.vx;
             particle.y += particle.vy;
-            particle.life -= 0.01;
+            particle.life -= 0.007;
           } else { // IDLE, WAITING, COUNTDOWN states
             particle.angle += particle.speed * gameSpeed.current;
             particle.x = touch.x + Math.cos(particle.angle) * particle.radius;
             particle.y = touch.y + Math.sin(particle.angle) * particle.radius;
-            particle.life -= 0.01; // Decrease life over time
+            particle.life -= 0.007; // Decrease life over time
           }
 
           if (particle.life > 0) {
