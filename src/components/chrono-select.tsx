@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const MAX_TOUCHES = 10;
-const PARTICLE_COUNT = 300;
+const PARTICLE_COUNT = 150;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
@@ -24,7 +24,7 @@ const createParticle = (touchX: number, touchY: number): Particle => {
     vx: 0,
     vy: 0,
     life: 1,
-    size: 1,
+    size: 1, // All particles same size
     color: 'white',
   };
 };
@@ -48,6 +48,14 @@ export default function ChronoSelect() {
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
 
   const resetGame = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
     setTouches(new Map());
     setGameState('IDLE');
     setShowInactivePrompt(false);
@@ -62,6 +70,9 @@ export default function ChronoSelect() {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
+
+    // The canvas is not cleared on every frame to create solid, non-fading trails.
+    // It's only cleared when the game resets or goes idle.
 
     setTouches(currentTouches => {
       const newTouches = new Map(currentTouches);
@@ -263,18 +274,19 @@ export default function ChronoSelect() {
   }, [handleTouchStart, handleTouchMove, handleTouchEnd, animate, handleMouseDown, handleContextMenu]);
 
   useEffect(() => {
-    clearTimeout(preCountdownTimerId.current);
+    if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
 
     if (touches.size >= 2 && gameState === 'WAITING') {
       preCountdownTimerId.current = setTimeout(() => {
-        // Double-check in case touches changed during timeout, by checking the gameState
         if (gameState === 'WAITING') {
             setGameState('COUNTDOWN');
         }
       }, PRE_COUNTDOWN_DELAY);
     }
     
-    return () => clearTimeout(preCountdownTimerId.current);
+    return () => {
+      if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current)
+    };
   }, [touches.size, gameState]);
 
   useEffect(() => {
@@ -290,7 +302,6 @@ export default function ChronoSelect() {
   useEffect(() => {
     if (countdownIntervalId.current) {
         clearInterval(countdownIntervalId.current);
-        countdownIntervalId.current = undefined;
     }
 
     if (gameState === 'COUNTDOWN') {
@@ -298,7 +309,7 @@ export default function ChronoSelect() {
       playTick(1);
       gameSpeed.current = 1;
 
-      countdownIntervalId.current = setInterval(() => {
+      const intervalId = setInterval(() => {
         setCountdown(prevCountdown => {
           const newCount = prevCountdown - 1;
           if (newCount > 0) {
@@ -306,19 +317,18 @@ export default function ChronoSelect() {
             playTick(gameSpeed.current);
             return newCount;
           } else {
-            clearInterval(countdownIntervalId.current);
-            countdownIntervalId.current = undefined;
+            clearInterval(intervalId);
             setGameState('RESULT');
             return 0;
           }
         });
       }, 1000);
+      countdownIntervalId.current = intervalId;
     }
 
     return () => {
       if (countdownIntervalId.current) {
         clearInterval(countdownIntervalId.current);
-        countdownIntervalId.current = undefined;
       }
     };
   }, [gameState, playTick]);
