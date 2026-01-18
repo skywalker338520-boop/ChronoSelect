@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
@@ -75,6 +77,7 @@ export default function ChronoSelect() {
   const revolverAngle = useRef(0);
   const [interactionLocked, setInteractionLocked] = useState(false);
   const spinAngle = useRef(0);
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
@@ -166,7 +169,7 @@ export default function ChronoSelect() {
             
             if (gameState === 'ROULETTE_SPINNING' || gameState === 'ROULETTE_TRIGGERING') {
                 spinAngle.current += 0.01; // Controls how fast the speed changes
-                const baseSpeed = 0.0084375;
+                const baseSpeed = 0.026;
                 const fluctuation = Math.sin(spinAngle.current) * (baseSpeed * 0.4);
                 const spinSpeed = baseSpeed + fluctuation;
 
@@ -284,7 +287,7 @@ export default function ChronoSelect() {
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (gameState === 'ROULETTE_GAMEOVER') {
@@ -352,7 +355,7 @@ export default function ChronoSelect() {
             ctx.restore();
         }
     });
-  }, [players, gameState, gameMode]);
+  }, [players, gameState, gameMode, backgroundColor]);
   
   // Resize canvas and start animation loop
   useEffect(() => {
@@ -736,7 +739,8 @@ export default function ChronoSelect() {
 
   return (
     <div 
-        className="relative h-full w-full bg-black"
+        className="relative h-full w-full"
+        style={{ backgroundColor }}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd} onTouchCancel={handleTouchEnd} onContextMenu={handleContextMenu}
@@ -772,6 +776,27 @@ export default function ChronoSelect() {
                       <Label htmlFor="roulette-mode" className="font-headline">Russian Roulette</Label>
                   </div>
               </RadioGroup>
+              <Separator className="my-4" />
+              <div>
+                <Label className="font-headline">Background</Label>
+                <div className="mt-2 flex gap-2">
+                  {['#000000', '#1a1a1a', '#2c003e', '#002c3e', '#2a3e00'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setBackgroundColor(color)}
+                      className={cn(
+                        'h-8 w-8 rounded-full border-2 transition-all',
+                        backgroundColor === color
+                          ? 'border-white'
+                          : 'border-transparent hover:border-white/50'
+                      )}
+                      style={{ backgroundColor: color }}
+                    >
+                      <span className="sr-only">{color}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
