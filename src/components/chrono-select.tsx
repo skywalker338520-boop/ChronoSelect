@@ -351,8 +351,6 @@ export default function ChronoSelect() {
 
   // --- React Event Handlers ---
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) return;
     if (e.button !== 0) return;
     isMouseDown.current = true;
     handlePointerDown(e.clientX, e.clientY, MOUSE_IDENTIFIER);
@@ -370,8 +368,6 @@ export default function ChronoSelect() {
   };
   
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) return;
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerDown(touch.clientX, touch.clientY, touch.identifier);
     }
@@ -586,7 +582,11 @@ export default function ChronoSelect() {
         onContextMenu={handleContextMenu}
     >
         <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-        <div className="absolute top-4 right-4 z-10 pointer-events-auto">
+        <div 
+          className="absolute top-4 right-4 z-10 pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon">
