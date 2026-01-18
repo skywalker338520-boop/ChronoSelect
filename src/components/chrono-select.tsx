@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { TouchPoint } from '@/lib/types';
+import type { Player } from '@/lib/types';
 import { useSound } from '@/hooks/use-sound';
 import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
+const RACE_START_DELAY = 3000; // Time to wait for new players
+const RACE_READY_DELAY = 2000; // Time before race starts
 
 const BASE_CIRCLE_SIZE = 130.345;
 
@@ -59,10 +61,10 @@ const shuffleArray = <T>(array: T[]): T[] => {
 
 
 export default function ChronoSelect() {
-  const [touches, setTouches] = useState<Map<number, TouchPoint>>(new Map());
-  const [gameState, setGameState] = useState<'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT'>('IDLE');
+  const [players, setPlayers] = useState<Map<number, Player>>(new Map());
+  const [gameState, setGameState] = useState<'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT' | 'RACE_WAITING' | 'RACE_READY' | 'RACING' | 'RACE_FINISH'>('IDLE');
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
-  const [gameMode, setGameMode] = useState<'chooser' | 'teamSplit'>('chooser');
+  const [gameMode, setGameMode] = useState<'chooser' | 'teamSplit' | 'race'>('chooser');
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,57 +72,94 @@ export default function ChronoSelect() {
   const inactiveTimerId = useRef<NodeJS.Timeout>();
   const countdownIntervalId = useRef<NodeJS.Timeout>();
   const preCountdownTimerId = useRef<NodeJS.Timeout>();
-  
+  const raceStartTimerId = useRef<NodeJS.Timeout>();
+  const raceReadyTimerId = useRef<NodeJS.Timeout>();
+
   const isMouseDown = useRef(false);
   const MOUSE_IDENTIFIER = -1; // Use a constant identifier for the mouse
+  const nextPlayerId = useRef(0);
+  const nextRank = useRef(1);
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
 
   // Reset game state
   const resetGame = useCallback(() => {
-    setTouches(new Map());
+    setPlayers(new Map());
     setGameState('IDLE');
     setShowInactivePrompt(false);
     if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     if (inactiveTimerId.current) clearTimeout(inactiveTimerId.current);
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
+    if (raceStartTimerId.current) clearTimeout(raceStartTimerId.current);
+    if (raceReadyTimerId.current) clearTimeout(raceReadyTimerId.current);
+    nextPlayerId.current = 0;
+    nextRank.current = 1;
   }, []);
 
   // Animation loop for STATE UPDATES
   const animate = useCallback(() => {
-    setTouches(currentTouches => {
-      if (currentTouches.size === 0) {
-        return currentTouches;
+    setPlayers(currentPlayers => {
+      if (currentPlayers.size === 0) {
+        return currentPlayers;
       }
       
-      const newTouches = new Map();
-      currentTouches.forEach((touch, id) => {
-        let updatedTouch = { ...touch };
+      const newPlayers = new Map(currentPlayers);
+      let finishedCount = 0;
+      let racingCount = 0;
 
-        if (gameState === 'RESULT' && touch.isWinner) {
+      newPlayers.forEach((player, id) => {
+        let updatedPlayer = { ...player };
+
+        if (gameState === 'RESULT' && player.isWinner) {
             // Expand to fill screen, stop breathing.
-            updatedTouch.size *= 1.0765;
-        } else if (gameState === 'RESULT' && touch.isLoser) {
+            updatedPlayer.size *= 1.0765;
+        } else if (gameState === 'RESULT' && player.isLoser) {
             // Shrink and fade faster.
-            updatedTouch.size *= 0.9;
-            updatedTouch.opacity = Math.max(0, touch.opacity - 0.05);
-        } else {
-            // Normal breathing for IDLE, WAITING, COUNTDOWN, and Team modes.
+            updatedPlayer.size *= 0.9;
+            updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
+        } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
+            racingCount++;
+            // Race movement
+            updatedPlayer.y -= updatedPlayer.vy;
+            // Random acceleration
+            updatedPlayer.vy += (Math.random() - 0.48) * 0.3;
+            updatedPlayer.vy = Math.max(1, updatedPlayer.vy); // minimum speed
+
+            // Check for finish
+            if (updatedPlayer.y <= updatedPlayer.size / 2) {
+                updatedPlayer.y = updatedPlayer.size / 2;
+                updatedPlayer.vy = 0;
+                updatedPlayer.rank = nextRank.current++;
+                playTick(2);
+                if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+            }
+        }
+        else {
+            // Normal breathing for IDLE, WAITING, COUNTDOWN, and non-racing modes.
             const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
-            updatedTouch.animationPhase += 0.02 * speedMultiplier;
-            const breathAmount = Math.sin(updatedTouch.animationPhase) * (updatedTouch.baseSize * 0.1);
-            updatedTouch.size = updatedTouch.baseSize + breathAmount;
+            updatedPlayer.animationPhase += 0.02 * speedMultiplier;
+            const breathAmount = Math.sin(updatedPlayer.animationPhase) * (updatedPlayer.baseSize * 0.1);
+            updatedPlayer.size = updatedPlayer.baseSize + breathAmount;
         }
         
-        if (!(gameState === 'RESULT' && touch.isLoser && updatedTouch.opacity <= 0)) {
-           newTouches.set(id, updatedTouch);
+        if (!(gameState === 'RESULT' && player.isLoser && updatedPlayer.opacity <= 0)) {
+           newPlayers.set(id, updatedPlayer);
+        }
+
+        if (updatedPlayer.rank !== null) {
+            finishedCount++;
         }
       });
-      return newTouches;
+
+      if (gameState === 'RACING' && racingCount > 0 && finishedCount === newPlayers.size) {
+        setTimeout(() => setGameState('RACE_FINISH'), 500);
+      }
+
+      return newPlayers;
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState]);
+  }, [gameState, playTick, nextRank]);
 
   // useEffect for DRAWING
   useEffect(() => {
@@ -131,26 +170,39 @@ export default function ChronoSelect() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    touches.forEach((touch) => {
+    players.forEach((player) => {
         ctx.save();
-        ctx.globalAlpha = touch.opacity;
+        ctx.globalAlpha = player.opacity;
         
-        const color = `hsl(${touch.hue}, ${touch.saturation}%, 70%)`;
+        const color = `hsl(${player.hue}, ${player.saturation}%, 70%)`;
         ctx.fillStyle = color;
         
         // Glow effect
-        if (gameState !== 'RESULT' || touch.isWinner || touch.team) {
+        if (gameState !== 'RESULT' || player.isWinner || player.team) {
             ctx.shadowColor = color;
             ctx.shadowBlur = 30;
         }
 
         ctx.beginPath();
-        ctx.arc(touch.x, touch.y, touch.size / 2, 0, Math.PI * 2);
+        ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.restore();
+
+        // Draw rank if finished
+        if (player.rank !== null && (gameState === 'RACING' || gameState === 'RACE_FINISH')) {
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 4;
+            ctx.font = `bold ${player.size * 0.5}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeText(String(player.rank), player.x, player.y);
+            ctx.fillText(String(player.rank), player.x, player.y);
+            ctx.restore();
+        }
     });
-  }, [touches, gameState]);
+  }, [players, gameState]);
   
   // Resize canvas and start animation loop
   useEffect(() => {
@@ -174,25 +226,58 @@ export default function ChronoSelect() {
 
   // --- Unified Pointer Event Logic ---
   const handlePointerDown = useCallback((x: number, y: number, id: number) => {
-    if (gameState === 'RESULT') {
+    if (gameState === 'RESULT' || gameState === 'RACE_FINISH') {
         resetGame();
         return;
+    }
+
+    if (gameMode === 'race') {
+      if (gameState === 'IDLE' || gameState === 'RACE_WAITING') {
+          setGameState('RACE_WAITING');
+          clearTimeout(raceStartTimerId.current);
+          
+          const newId = nextPlayerId.current++;
+          
+          setPlayers(currentPlayers => {
+              if (currentPlayers.size >= MAX_TOUCHES) return currentPlayers;
+              const newPlayers = new Map(currentPlayers);
+              const existingHues = Array.from(newPlayers.values()).map(p => p.hue);
+              
+              newPlayers.set(newId, {
+                  id: newId, x, y,
+                  isWinner: false, isLoser: false, team: null, 
+                  hue: getDistinctHue(existingHues),
+                  saturation: 90,
+                  opacity: 1,
+                  size: BASE_CIRCLE_SIZE,
+                  baseSize: BASE_CIRCLE_SIZE,
+                  animationPhase: Math.random() * Math.PI * 2,
+                  vy: 0, rank: null,
+              });
+              return newPlayers;
+          });
+
+          raceStartTimerId.current = setTimeout(() => {
+            setPlayers(current => { if(current.size > 0) { setGameState('RACE_READY') } return current; });
+          }, RACE_START_DELAY);
+      }
+      return;
     }
 
     clearTimeout(inactiveTimerId.current);
     setShowInactivePrompt(false);
 
-    setTouches(currentTouches => {
-        if (currentTouches.size >= MAX_TOUCHES) return currentTouches;
+    setPlayers(currentPlayers => {
+        if (currentPlayers.size >= MAX_TOUCHES) return currentPlayers;
         
-        const newTouches = new Map(currentTouches);
-        const existingHues = Array.from(newTouches.values()).map(t => t.hue);
+        const newPlayers = new Map(currentPlayers);
+        const existingHues = Array.from(newPlayers.values()).map(t => t.hue);
         
         const isChooserMode = gameMode === 'chooser';
         const newHue = isChooserMode ? getDistinctHue(existingHues) : 0;
         const newSaturation = isChooserMode ? 90 : 0;
 
-        newTouches.set(id, {
+        newPlayers.set(id, {
             id, x, y,
             isWinner: false, isLoser: false, team: null, 
             hue: newHue,
@@ -200,42 +285,41 @@ export default function ChronoSelect() {
             opacity: 1,
             size: BASE_CIRCLE_SIZE,
             baseSize: BASE_CIRCLE_SIZE,
-            animationPhase: Math.random() * Math.PI * 2, // Start at a random point in the breath cycle
+            animationPhase: Math.random() * Math.PI * 2,
+            vy: 0, rank: null,
         });
 
-        if (newTouches.size > 0) setGameState('WAITING');
-        return newTouches;
+        if (newPlayers.size > 0) setGameState('WAITING');
+        return newPlayers;
     });
   }, [gameState, resetGame, gameMode]);
 
   const handlePointerMove = useCallback((x: number, y: number, id: number) => {
-    setTouches(currentTouches => {
-      const newTouches = new Map(currentTouches);
-      const existingTouch = newTouches.get(id);
-      if (existingTouch) {
-        newTouches.set(id, { ...existingTouch, x, y });
+    if (gameMode === 'race') return;
+    setPlayers(currentPlayers => {
+      const newPlayers = new Map(currentPlayers);
+      const existingPlayer = newPlayers.get(id);
+      if (existingPlayer) {
+        newPlayers.set(id, { ...existingPlayer, x, y });
       }
-      return newTouches;
+      return newPlayers;
     });
-  }, []);
+  }, [gameMode]);
 
   const handlePointerUp = useCallback((id: number) => {
-    if (gameState === 'RESULT') return;
-    setTouches(currentTouches => {
-      const newTouches = new Map(currentTouches);
-      newTouches.delete(id);
-      if (newTouches.size === 0) setGameState('IDLE');
-      return newTouches;
+    if (gameState === 'RESULT' || gameMode === 'race') return;
+    setPlayers(currentPlayers => {
+      const newPlayers = new Map(currentPlayers);
+      newPlayers.delete(id);
+      if (newPlayers.size === 0) setGameState('IDLE');
+      return newPlayers;
     });
-  }, [gameState]);
+  }, [gameState, gameMode]);
 
   // --- React Event Handlers ---
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    // Allow events to pass through to the settings popover
-    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) {
-      return;
-    }
+    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) return;
     e.preventDefault();
     if (e.button !== 0) return;
     isMouseDown.current = true;
@@ -243,7 +327,7 @@ export default function ChronoSelect() {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isMouseDown.current) return;
+    if (!isMouseDown.current || gameMode === 'race') return;
     handlePointerMove(e.clientX, e.clientY, MOUSE_IDENTIFIER);
   };
   
@@ -255,10 +339,7 @@ export default function ChronoSelect() {
   
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    // Allow events to pass through to the settings popover
-    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) {
-      return;
-    }
+    if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) return;
     e.preventDefault();
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerDown(touch.clientX, touch.clientY, touch.identifier);
@@ -266,18 +347,13 @@ export default function ChronoSelect() {
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    // We do not call e.preventDefault() here because the `touch-action: none`
-    // CSS property on the body should be sufficient to prevent unwanted
-    // scrolling or zooming. Calling preventDefault can interfere with
-    // other touch interactions, like tapping the settings button.
+    if (gameMode === 'race') return;
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerMove(touch.clientX, touch.clientY, touch.identifier);
     }
   };
   
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    // preventDefault() is NOT called here to ensure that `click` events can fire
-    // on UI elements like the settings button.
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerUp(touch.identifier);
     }
@@ -285,17 +361,17 @@ export default function ChronoSelect() {
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    if(touches.size > 0) resetGame();
-  }, [resetGame, touches.size]);
+    if(players.size > 0) resetGame();
+  }, [resetGame, players.size]);
 
 
   // --- Game Logic useEffects ---
-  const touchCount = touches.size;
+  const playerCount = players.size;
   useEffect(() => {
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
-    if (touchCount >= 2 && gameState === 'WAITING') {
+    if (gameMode !== 'race' && playerCount >= 2 && gameState === 'WAITING') {
       preCountdownTimerId.current = setTimeout(() => {
-        if (touches.size >= 2) { 
+        if (players.size >= 2) { 
             setGameState('COUNTDOWN');
         }
       }, PRE_COUNTDOWN_DELAY);
@@ -305,17 +381,17 @@ export default function ChronoSelect() {
       if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current)
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [touchCount, gameState]);
+  }, [playerCount, gameState, gameMode]);
 
   useEffect(() => {
     clearTimeout(inactiveTimerId.current);
-    if (gameState === 'IDLE' && touches.size === 0) {
+    if (gameState === 'IDLE' && players.size === 0) {
       inactiveTimerId.current = setTimeout(() => setShowInactivePrompt(true), INACTIVITY_TIMEOUT);
     } else {
       setShowInactivePrompt(false);
     }
     return () => clearTimeout(inactiveTimerId.current);
-  }, [gameState, touches.size]);
+  }, [gameState, players.size]);
 
   useEffect(() => {
     if (countdownIntervalId.current) {
@@ -325,18 +401,14 @@ export default function ChronoSelect() {
     if (gameState === 'COUNTDOWN') {
       setCountdown(COUNTDOWN_SECONDS);
       playTick(1);
-      if (navigator.vibrate) {
-        navigator.vibrate(200);
-      }
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(200);
 
       const intervalId = setInterval(() => {
         setCountdown(prevCountdown => {
           const newCount = prevCountdown - 1;
           if (newCount > 0) {
             playTick(1);
-            if (navigator.vibrate) {
-              navigator.vibrate(100);
-            }
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(100);
             return newCount;
           } else {
             clearInterval(intervalId);
@@ -349,35 +421,87 @@ export default function ChronoSelect() {
     }
 
     return () => {
-      if (countdownIntervalId.current) {
-        clearInterval(countdownIntervalId.current);
-      }
+      if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     };
   }, [gameState, playTick]);
+  
+  // Game state logic for Race mode
+  useEffect(() => {
+    if (gameState === 'RACE_READY') {
+      clearTimeout(raceStartTimerId.current);
+      playTeamSplitSound();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(100);
+
+      setPlayers(currentPlayers => {
+        if (typeof window === 'undefined') return currentPlayers;
+
+        const lineupWidth = window.innerWidth * 0.8;
+        const spacing = currentPlayers.size > 1 ? lineupWidth / (currentPlayers.size - 1) : 0;
+        const startX = (window.innerWidth - lineupWidth) / 2;
+        const startY = window.innerHeight - BASE_CIRCLE_SIZE;
+
+        const newPlayers = new Map(currentPlayers);
+        Array.from(newPlayers.values()).forEach((p, index) => {
+            const playerToUpdate = newPlayers.get(p.id);
+            if (playerToUpdate) {
+                newPlayers.set(p.id, {
+                    ...playerToUpdate,
+                    x: startX + (index * spacing),
+                    y: startY,
+                });
+            }
+        });
+        return newPlayers;
+      });
+
+      raceReadyTimerId.current = setTimeout(() => {
+        setGameState('RACING');
+      }, RACE_READY_DELAY);
+    } else if (gameState === 'RACING') {
+        clearTimeout(raceReadyTimerId.current);
+        playWinnerSound();
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+        setPlayers(currentPlayers => {
+            const newPlayers = new Map(currentPlayers);
+            newPlayers.forEach(player => {
+                if(newPlayers.has(player.id)) {
+                  newPlayers.set(player.id, {...player, vy: (Math.random() * 3) + 3 });
+                }
+            });
+            return newPlayers;
+        });
+    } else if (gameState === 'RACE_FINISH') {
+        playLoserSound();
+        const resetTimeout = setTimeout(resetGame, 10000);
+        return () => clearTimeout(resetTimeout);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, playTeamSplitSound, playWinnerSound, playLoserSound, resetGame]);
 
   useEffect(() => {
-    if (gameState === 'RESULT' && !Array.from(touches.values()).some(t => t.isWinner || t.isLoser || t.team)) {
-      const currentTouches = Array.from(touches.values());
-      if (currentTouches.length === 0) {
+    if (gameState === 'RESULT' && gameMode !== 'race' && !Array.from(players.values()).some(t => t.isWinner || t.isLoser || t.team)) {
+      const currentPlayers = Array.from(players.values());
+      if (currentPlayers.length === 0) {
         resetGame();
         return;
       }
       
       if (gameMode === 'teamSplit') {
         playTeamSplitSound();
-        const shuffled = shuffleArray(currentTouches);
+        const shuffled = shuffleArray(currentPlayers);
         const mid = Math.ceil(shuffled.length / 2);
         const teams = { A: shuffled.slice(0, mid), B: shuffled.slice(mid) };
         
         const hueA = getDistinctHue([]);
         const hueB = getDistinctHue([hueA]);
 
-        setTouches(current => {
-          const newTouches = new Map(current);
-          newTouches.forEach((touch, id) => {
+        setPlayers(current => {
+          const newPlayers = new Map(current);
+          newPlayers.forEach((player, id) => {
             const team = teams.A.some(t => t.id === id) ? 'A' : 'B';
-            newTouches.set(id, { 
-              ...touch, 
+            newPlayers.set(id, { 
+              ...player, 
               isWinner: false, 
               isLoser: false, 
               team, 
@@ -385,31 +509,31 @@ export default function ChronoSelect() {
               saturation: 90,
             });
           });
-          return newTouches;
+          return newPlayers;
         });
       } else { // Chooser mode
         playWinnerSound();
-        if (currentTouches.length > 1) {
+        if (currentPlayers.length > 1) {
           playLoserSound();
         }
-        const shuffledTouches = shuffleArray(currentTouches);
-        const winner = shuffledTouches[0];
+        const shuffledPlayers = shuffleArray(currentPlayers);
+        const winner = shuffledPlayers[0];
 
-        setTouches(current => {
-          const newTouches = new Map(current);
-          newTouches.forEach((touch, id) => {
-            const isWinner = touch.id === winner?.id;
+        setPlayers(current => {
+          const newPlayers = new Map(current);
+          newPlayers.forEach((player, id) => {
+            const isWinner = player.id === winner?.id;
             const isLoser = !isWinner;
-            newTouches.set(id, { ...touch, isWinner, isLoser, team: null });
+            newPlayers.set(id, { ...player, isWinner, isLoser, team: null });
           });
-          return newTouches;
+          return newPlayers;
         });
       }
 
       const resetTimeout = setTimeout(resetGame, 10000);
       return () => clearTimeout(resetTimeout);
     }
-  }, [gameState, touches, gameMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
+  }, [gameState, players, gameMode, playWinnerSound, playTeamSplitSound, playLoserSound, resetGame]);
 
   return (
     <div 
@@ -436,9 +560,9 @@ export default function ChronoSelect() {
             <PopoverContent className="w-auto mr-4">
                <RadioGroup 
                   value={gameMode} 
-                  onValueChange={(value) => setGameMode(value as 'chooser' | 'teamSplit')}
+                  onValueChange={(value) => setGameMode(value as 'chooser' | 'teamSplit' | 'race')}
                   className="gap-4" 
-                  disabled={gameState !== 'IDLE' && gameState !== 'WAITING'}
+                  disabled={!['IDLE', 'WAITING', 'RACE_WAITING'].includes(gameState)}
               >
                   <div className="flex items-center space-x-2">
                       <RadioGroupItem value="chooser" id="chooser-mode" />
@@ -448,6 +572,10 @@ export default function ChronoSelect() {
                       <RadioGroupItem value="teamSplit" id="teamsplit-mode" />
                       <Label htmlFor="teamsplit-mode" className="font-headline">Team Split</Label>
                   </div>
+                  <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="race" id="race-mode" />
+                      <Label htmlFor="race-mode" className="font-headline">Race</Label>
+                  </div>
               </RadioGroup>
             </PopoverContent>
           </Popover>
@@ -455,7 +583,13 @@ export default function ChronoSelect() {
 
         {showInactivePrompt && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-white text-4xl font-headline animate-pulse">Tap Here</p>
+                <p className="text-white text-4xl font-headline animate-pulse">Tap Here to Start</p>
+            </div>
+        )}
+
+        {(gameState === 'RACE_READY') && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <p className="text-white text-6xl font-headline animate-pulse">Ready...</p>
             </div>
         )}
     </div>

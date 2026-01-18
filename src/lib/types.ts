@@ -1,4 +1,4 @@
-export type TouchPoint = {
+export type Player = {
   id: number;
   x: number;
   y: number;
@@ -11,4 +11,8 @@ export type TouchPoint = {
   size: number; // The current animated size
   baseSize: number; // The base size to calculate breathing from
   animationPhase: number; // Used for the sin wave of the breathing effect
+
+  // New properties for Race mode
+  vy: number; // vertical velocity
+  rank: number | null;
 };
