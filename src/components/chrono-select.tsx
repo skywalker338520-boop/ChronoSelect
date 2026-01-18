@@ -124,7 +124,7 @@ export default function ChronoSelect() {
                 // Race movement
                 updatedPlayer.y -= updatedPlayer.vy;
                 // Random acceleration
-                updatedPlayer.vy += (Math.random() - 0.48) * 0.05; // Slower acceleration
+                updatedPlayer.vy += (Math.random() - 0.5) * 0.5; // Increased randomness
                 updatedPlayer.vy = Math.max(0.2, updatedPlayer.vy); // Slower minimum speed
 
                 // Check for finish
