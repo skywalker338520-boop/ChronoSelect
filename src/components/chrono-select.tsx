@@ -98,13 +98,14 @@ export default function ChronoSelect() {
   // Animation loop for STATE UPDATES
   const animate = useCallback(() => {
     setPlayers(currentPlayers => {
-      if (currentPlayers.size === 0) {
-        return currentPlayers;
-      }
-      
-      const newPlayers = new Map(currentPlayers);
       let finishedCount = 0;
       let racingCount = 0;
+
+      currentPlayers.forEach(p => {
+          if (p.rank !== null) finishedCount++;
+      });
+      
+      const newPlayers = new Map(currentPlayers);
       const finishersThisFrame: Player[] = [];
 
       newPlayers.forEach((player, id) => {
@@ -120,8 +121,8 @@ export default function ChronoSelect() {
             // Race movement
             updatedPlayer.y -= updatedPlayer.vy;
             // Random acceleration
-            updatedPlayer.vy += (Math.random() - 0.48) * 0.3;
-            updatedPlayer.vy = Math.max(1, updatedPlayer.vy); // minimum speed
+            updatedPlayer.vy += (Math.random() - 0.48) * 0.15;
+            updatedPlayer.vy = Math.max(0.5, updatedPlayer.vy); // minimum speed
 
             // Check for finish
             if (updatedPlayer.y <= updatedPlayer.size / 2) {
@@ -141,10 +142,6 @@ export default function ChronoSelect() {
         if (!(gameState === 'RESULT' && player.isLoser && updatedPlayer.opacity <= 0)) {
            newPlayers.set(id, updatedPlayer);
         }
-
-        if (player.rank !== null) { // Check original rank
-            finishedCount++;
-        }
       });
 
       // Sort and rank any players that finished this frame
@@ -152,15 +149,18 @@ export default function ChronoSelect() {
         let rankToAssign = finishedCount + 1;
         finishersThisFrame.sort((a, b) => a.y - b.y);
         for (const finisher of finishersThisFrame) {
-            finisher.rank = rankToAssign++;
-            newPlayers.set(finisher.id, finisher); // Update the map with the ranked player
+            if (newPlayers.has(finisher.id)) {
+                const playerToUpdate = newPlayers.get(finisher.id)!;
+                playerToUpdate.rank = rankToAssign++;
+                newPlayers.set(finisher.id, playerToUpdate);
+            }
             playTick(2);
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
         }
         finishedCount += finishersThisFrame.length;
       }
 
-      if (gameState === 'RACING' && racingCount > 0 && finishedCount === newPlayers.size) {
+      if (gameState === 'RACING' && racingCount > 0 && newPlayers.size > 0 && finishedCount === newPlayers.size) {
         setTimeout(() => setGameState('RACE_FINISH'), 500);
       }
 
@@ -475,7 +475,7 @@ export default function ChronoSelect() {
             const newPlayers = new Map(currentPlayers);
             newPlayers.forEach(player => {
                 if(newPlayers.has(player.id)) {
-                  newPlayers.set(player.id, {...player, vy: (Math.random() * 3) + 3 });
+                  newPlayers.set(player.id, {...player, vy: (Math.random() * 1.5) + 1 });
                 }
             });
             return newPlayers;
@@ -604,7 +604,3 @@ export default function ChronoSelect() {
     </div>
   );
 }
-
-    
-
-    
