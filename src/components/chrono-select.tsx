@@ -72,7 +72,7 @@ export default function ChronoSelect() {
   const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
   const [gameMode, setGameMode] = useState<GameMode>('chooser');
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
-  const [revolverAngle, setRevolverAngle] = useState(0);
+  const revolverAngle = useRef(0);
   const [interactionLocked, setInteractionLocked] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -113,7 +113,7 @@ export default function ChronoSelect() {
         });
     }
     setPlayers(newChambers);
-    setRevolverAngle(0);
+    revolverAngle.current = 0;
     setGameState('ROULETTE_SPINNING');
   }, []);
 
@@ -150,7 +150,7 @@ export default function ChronoSelect() {
         if (gameState === 'ROULETTE_SPINNING') {
             const remainingCount = players.size;
             const speedMultiplier = (7 - remainingCount) * 0.5;
-            setRevolverAngle(prev => (prev + 0.005 * speedMultiplier) % (Math.PI * 2));
+            revolverAngle.current = (revolverAngle.current + 0.005 * speedMultiplier) % (Math.PI * 2);
         }
         
         setPlayers(currentPlayers => {
@@ -160,7 +160,7 @@ export default function ChronoSelect() {
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
                     updatedPlayer.size *= 1.2;
                 } else if(p.angle !== undefined) {
-                    const currentAngle = p.angle + revolverAngle;
+                    const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
                     updatedPlayer.y = centerY + Math.sin(currentAngle) * radius;
                 }
@@ -190,10 +190,10 @@ export default function ChronoSelect() {
                 } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
                     racingCount++;
                     if (Math.random() < 0.05) {
-                        const speedBoost = (Math.random() - 0.45) * 3;
+                        const speedBoost = (Math.random() - 0.45) * 5; // Increased fluctuation
                         updatedPlayer.vy += speedBoost;
                     }
-                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 5));
+                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 8)); // Increased max speed
 
                     if (updatedPlayer.raceDirection === 'up') {
                         updatedPlayer.y -= updatedPlayer.vy;
@@ -240,7 +240,7 @@ export default function ChronoSelect() {
     }
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, gameMode, playTick, revolverAngle, players.size]);
+  }, [gameState, gameMode, playTick, players.size]);
 
   // Drawing useEffect
   useEffect(() => {
@@ -576,11 +576,11 @@ export default function ChronoSelect() {
         const sightAngle = -Math.PI / 2;
         let closestChamber: Player | null = null;
         let minAngleDiff = Infinity;
-        let finalRevolverAngle = revolverAngle;
+        let finalRevolverAngle = revolverAngle.current;
 
         players.forEach(p => {
             if (p.angle === undefined) return;
-            const effectiveAngle = (p.angle + revolverAngle) % (Math.PI * 2);
+            const effectiveAngle = (p.angle + revolverAngle.current) % (Math.PI * 2);
             let diff = sightAngle - effectiveAngle;
             if (diff > Math.PI) diff -= 2 * Math.PI;
             if (diff < -Math.PI) diff += 2 * Math.PI;
@@ -588,14 +588,14 @@ export default function ChronoSelect() {
             if (Math.abs(diff) < minAngleDiff) {
                 minAngleDiff = Math.abs(diff);
                 closestChamber = p;
-                finalRevolverAngle = revolverAngle + diff;
+                finalRevolverAngle = revolverAngle.current + diff;
             }
         });
         
         if (!closestChamber) { setInteractionLocked(false); setGameState('ROULETTE_SPINNING'); return; }
 
         const decelerationTimer = setTimeout(() => {
-            setRevolverAngle(finalRevolverAngle);
+            revolverAngle.current = finalRevolverAngle;
 
             const chamberToFire = closestChamber!;
             const triggerOutcomeTimer = setTimeout(() => {
@@ -634,7 +634,7 @@ export default function ChronoSelect() {
       rouletteTimers.current.forEach(timer => clearTimeout(timer));
       rouletteTimers.current = [];
     }
-  }, [gameState, players, revolverAngle, playGunshotSound, playClickSound, resetGame]);
+  }, [gameState, players, playGunshotSound, playClickSound, resetGame]);
 
   return (
     <div 
@@ -684,7 +684,7 @@ export default function ChronoSelect() {
             </div>
         )}
 
-        {(gameState === 'RACE_READY') && (
+        {gameState === 'RACE_READY' && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <p className="text-white text-4xl font-headline animate-pulse">Ready...</p>
             </div>
@@ -698,3 +698,5 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
