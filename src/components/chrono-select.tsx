@@ -85,6 +85,7 @@ export default function ChronoSelect() {
   const playerCreationTimers = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const rouletteTimers = useRef<NodeJS.Timeout[]>([]);
   const decelerationData = useRef<{startAngle: number, targetAngle: number, startTime: number, chamber: Player | null}>({startAngle: 0, targetAngle: 0, startTime: 0, chamber: null});
+  const hasFiredRef = useRef(false);
 
   const isMouseDown = useRef(false);
   const MOUSE_IDENTIFIER = -1;
@@ -355,6 +356,7 @@ export default function ChronoSelect() {
 
     if (gameMode === 'russianRoulette') {
         if (gameState === 'ROULETTE_SPINNING') {
+            hasFiredRef.current = false; // Reset the guard flag
             setGameState('ROULETTE_TRIGGERING');
         } else if (gameState === 'ROULETTE_GAMEOVER') {
             resetGame();
@@ -623,7 +625,9 @@ export default function ChronoSelect() {
     rouletteTimers.current.forEach(timer => clearTimeout(timer));
     rouletteTimers.current = [];
 
-    if (gameState === 'ROULETTE_FIRING') {
+    if (gameState === 'ROULETTE_FIRING' && !hasFiredRef.current) {
+      hasFiredRef.current = true; // Prevent re-entry
+
       const { chamber } = decelerationData.current;
       if (!chamber) {
         setGameState('ROULETTE_SPINNING');
