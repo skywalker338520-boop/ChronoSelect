@@ -8,6 +8,8 @@ type Synths = {
   ding: Tone.Synth,
   whoosh: Tone.NoiseSynth,
   loser: Tone.NoiseSynth,
+  click: Tone.Synth,
+  gunshot: Tone.NoiseSynth,
 };
 
 export function useSound() {
@@ -47,6 +49,14 @@ export function useSound() {
           loser: new Tone.NoiseSynth({
             noise: { type: 'pink' },
             envelope: { attack: 0.1, decay: 0.5, sustain: 0, release: 0.4 },
+          }).toDestination(),
+          click: new Tone.Synth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.1 },
+          }).toDestination(),
+          gunshot: new Tone.NoiseSynth({
+            noise: { type: 'brown' },
+            envelope: { attack: 0.005, decay: 0.3, sustain: 0, release: 0.5 },
           }).toDestination(),
         };
         
@@ -106,5 +116,17 @@ export function useSound() {
     synths.current.loser.triggerAttackRelease('0.6n', Tone.now());
   }, []);
 
-  return { playTick, playWinnerSound, playTeamSplitSound, playLoserSound };
+  const playClickSound = useCallback(() => {
+    const Tone = ToneRef.current;
+    if (!synths.current || !Tone) return;
+    synths.current.click.triggerAttackRelease('C7', '32n', Tone.now());
+  }, []);
+
+  const playGunshotSound = useCallback(() => {
+    const Tone = ToneRef.current;
+    if (!synths.current || !Tone) return;
+    synths.current.gunshot.triggerAttackRelease('0.5n', Tone.now());
+  }, []);
+
+  return { playTick, playWinnerSound, playTeamSplitSound, playLoserSound, playClickSound, playGunshotSound };
 }

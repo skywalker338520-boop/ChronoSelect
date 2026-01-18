@@ -12,8 +12,12 @@ export type Player = {
   baseSize: number; // The base size to calculate breathing from
   animationPhase: number; // Used for the sin wave of the breathing effect
 
-  // New properties for Race mode
-  vy: number; // vertical velocity
+  // Race mode properties
+  vy: number;
   rank: number | null;
   raceDirection: 'up' | 'down';
+
+  // Russian Roulette mode properties
+  isBullet?: boolean;
+  angle?: number;
 };
