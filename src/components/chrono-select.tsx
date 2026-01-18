@@ -163,9 +163,7 @@ export default function ChronoSelect() {
             const radius = Math.min(centerX, centerY) * 0.4;
 
             if (gameState === 'ROULETTE_SPINNING') {
-                const remainingCount = newPlayers.size;
-                const speedMultiplier = (7 - remainingCount) * 0.5;
-                revolverAngle.current = (revolverAngle.current + 0.0225 * 4 * speedMultiplier) % (Math.PI * 2);
+                revolverAngle.current = (revolverAngle.current + 0.36) % (Math.PI * 2);
             } else if (gameState === 'ROULETTE_TRIGGERING') {
                 const { startAngle, targetAngle, startTime } = decelerationData.current;
                 const duration = 200; // 200ms deceleration
@@ -185,7 +183,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.16;
+                    updatedPlayer.size *= 1.08;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -266,7 +264,7 @@ export default function ChronoSelect() {
 
     animationFrameId.current = requestAnimationFrame(animate);
   }, [gameState, gameMode, playTick]);
-
+  
   // Drawing useEffect
   useEffect(() => {
     const canvas = canvasRef.current;
