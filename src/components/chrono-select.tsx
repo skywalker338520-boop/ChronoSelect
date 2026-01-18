@@ -16,6 +16,7 @@ const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 const RACE_START_DELAY = 3000; // Time to wait for new players
 const RACE_READY_DELAY = 2000; // Time before race starts
+const PLAYER_CREATION_DELAY = 500; // Minimal contact time to create a player in race mode
 
 const BASE_CIRCLE_SIZE = 130.345;
 
@@ -75,6 +76,7 @@ export default function ChronoSelect() {
   const preCountdownTimerId = useRef<NodeJS.Timeout>();
   const raceStartTimerId = useRef<NodeJS.Timeout>();
   const raceReadyTimerId = useRef<NodeJS.Timeout>();
+  const playerCreationTimers = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   const isMouseDown = useRef(false);
   const MOUSE_IDENTIFIER = -1; // Use a constant identifier for the mouse
@@ -92,83 +94,89 @@ export default function ChronoSelect() {
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
     if (raceStartTimerId.current) clearTimeout(raceStartTimerId.current);
     if (raceReadyTimerId.current) clearTimeout(raceReadyTimerId.current);
+    playerCreationTimers.current.forEach(timer => clearTimeout(timer));
+    playerCreationTimers.current.clear();
     nextPlayerId.current = 0;
   }, []);
 
   // Animation loop for STATE UPDATES
   const animate = useCallback(() => {
+    let finishedRacerCount = 0;
+
     setPlayers(currentPlayers => {
-      let finishedCount = 0;
-      let racingCount = 0;
+        let racingCount = 0;
+        currentPlayers.forEach(p => {
+            if (p.rank !== null) finishedRacerCount++;
+        });
 
-      currentPlayers.forEach(p => {
-          if (p.rank !== null) finishedCount++;
-      });
-      
-      const newPlayers = new Map(currentPlayers);
-      const finishersThisFrame: Player[] = [];
+        const newPlayers = new Map(currentPlayers);
+        const finishersThisFrame: Player[] = [];
 
-      newPlayers.forEach((player, id) => {
-        let updatedPlayer = { ...player };
+        newPlayers.forEach((player, id) => {
+            let updatedPlayer = { ...player };
 
-        if (gameState === 'RESULT' && player.isWinner) {
-            updatedPlayer.size *= 1.0765;
-        } else if (gameState === 'RESULT' && player.isLoser) {
-            updatedPlayer.size *= 0.9;
-            updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
-        } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
-            racingCount++;
-            // Race movement
-            updatedPlayer.y -= updatedPlayer.vy;
-            // Random acceleration
-            updatedPlayer.vy += (Math.random() - 0.48) * 0.15;
-            updatedPlayer.vy = Math.max(0.5, updatedPlayer.vy); // minimum speed
+            if (gameState === 'RESULT' && player.isWinner) {
+                updatedPlayer.size *= 1.0765;
+            } else if (gameState === 'RESULT' && player.isLoser) {
+                updatedPlayer.size *= 0.9;
+                updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
+            } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
+                racingCount++;
+                // Race movement
+                updatedPlayer.y -= updatedPlayer.vy;
+                // Random acceleration
+                updatedPlayer.vy += (Math.random() - 0.48) * 0.05; // Slower acceleration
+                updatedPlayer.vy = Math.max(0.2, updatedPlayer.vy); // Slower minimum speed
 
-            // Check for finish
-            if (updatedPlayer.y <= updatedPlayer.size / 2) {
-                updatedPlayer.y = updatedPlayer.size / 2;
-                updatedPlayer.vy = 0;
-                finishersThisFrame.push(updatedPlayer); // Add to list to be ranked later
+                // Check for finish
+                if (updatedPlayer.y <= updatedPlayer.size / 2) {
+                    updatedPlayer.y = updatedPlayer.size / 2;
+                    updatedPlayer.vy = 0;
+                    finishersThisFrame.push(updatedPlayer); // Add to list to be ranked later
+                }
+            } else {
+                // Normal breathing for IDLE, WAITING, COUNTDOWN, and non-racing modes.
+                const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
+                updatedPlayer.animationPhase += 0.02 * speedMultiplier;
+                const breathAmount = Math.sin(updatedPlayer.animationPhase) * (updatedPlayer.baseSize * 0.1);
+                updatedPlayer.size = updatedPlayer.baseSize + breathAmount;
             }
-        }
-        else {
-            // Normal breathing for IDLE, WAITING, COUNTDOWN, and non-racing modes.
-            const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
-            updatedPlayer.animationPhase += 0.02 * speedMultiplier;
-            const breathAmount = Math.sin(updatedPlayer.animationPhase) * (updatedPlayer.baseSize * 0.1);
-            updatedPlayer.size = updatedPlayer.baseSize + breathAmount;
-        }
-        
-        if (!(gameState === 'RESULT' && player.isLoser && updatedPlayer.opacity <= 0)) {
-           newPlayers.set(id, updatedPlayer);
-        }
-      });
 
-      // Sort and rank any players that finished this frame
-      if (finishersThisFrame.length > 0) {
-        let rankToAssign = finishedCount + 1;
-        finishersThisFrame.sort((a, b) => a.y - b.y);
-        for (const finisher of finishersThisFrame) {
-            if (newPlayers.has(finisher.id)) {
-                const playerToUpdate = newPlayers.get(finisher.id)!;
-                playerToUpdate.rank = rankToAssign++;
-                newPlayers.set(finisher.id, playerToUpdate);
+            if (!(gameState === 'RESULT' && player.isLoser && updatedPlayer.opacity <= 0)) {
+                newPlayers.set(id, updatedPlayer);
+            }
+        });
+
+        // Sort and rank any players that finished this frame
+        if (finishersThisFrame.length > 0) {
+            let rankToAssign = finishedRacerCount + 1;
+            // Sort by who crossed the line furthest (lowest y)
+            finishersThisFrame.sort((a, b) => a.y - b.y);
+
+            for (const finisher of finishersThisFrame) {
+                if (newPlayers.has(finisher.id)) {
+                    const playerToUpdate = newPlayers.get(finisher.id)!;
+                    if (playerToUpdate.rank === null) { // Ensure we only rank once
+                        playerToUpdate.rank = rankToAssign++;
+                        newPlayers.set(finisher.id, playerToUpdate);
+                    }
+                }
             }
             playTick(2);
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+            finishedRacerCount += finishersThisFrame.length;
         }
-        finishedCount += finishersThisFrame.length;
-      }
 
-      if (gameState === 'RACING' && racingCount > 0 && newPlayers.size > 0 && finishedCount === newPlayers.size) {
-        setTimeout(() => setGameState('RACE_FINISH'), 500);
-      }
+        if (gameState === 'RACING' && racingCount > 0 && newPlayers.size > 0 && finishedRacerCount === newPlayers.size) {
+            setTimeout(() => setGameState('RACE_FINISH'), 500);
+        }
 
-      return newPlayers;
+        return newPlayers;
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
   }, [gameState, playTick]);
+
 
   // useEffect for DRAWING
   useEffect(() => {
@@ -242,33 +250,42 @@ export default function ChronoSelect() {
 
     if (gameMode === 'race') {
       if (gameState === 'IDLE' || gameState === 'RACE_WAITING') {
-          setGameState('RACE_WAITING');
-          clearTimeout(raceStartTimerId.current);
-          
-          const newId = nextPlayerId.current++;
-          
-          setPlayers(currentPlayers => {
-              if (currentPlayers.size >= MAX_TOUCHES) return currentPlayers;
-              const newPlayers = new Map(currentPlayers);
-              const existingHues = Array.from(newPlayers.values()).map(p => p.hue);
+          // Don't add a player yet. Set a timer to do it after a delay.
+          // This prevents accidental quick taps from creating players.
+          const timer = setTimeout(() => {
+              setGameState('RACE_WAITING');
+              clearTimeout(raceStartTimerId.current);
               
-              newPlayers.set(newId, {
-                  id: newId, x, y,
-                  isWinner: false, isLoser: false, team: null, 
-                  hue: getDistinctHue(existingHues),
-                  saturation: 90,
-                  opacity: 1,
-                  size: BASE_CIRCLE_SIZE,
-                  baseSize: BASE_CIRCLE_SIZE,
-                  animationPhase: Math.random() * Math.PI * 2,
-                  vy: 0, rank: null,
+              const newId = nextPlayerId.current++;
+              
+              setPlayers(currentPlayers => {
+                  if (currentPlayers.size >= MAX_TOUCHES) return currentPlayers;
+                  const newPlayers = new Map(currentPlayers);
+                  const existingHues = Array.from(newPlayers.values()).map(p => p.hue);
+                  
+                  newPlayers.set(newId, {
+                      id: newId, x, y,
+                      isWinner: false, isLoser: false, team: null, 
+                      hue: getDistinctHue(existingHues),
+                      saturation: 90,
+                      opacity: 1,
+                      size: BASE_CIRCLE_SIZE,
+                      baseSize: BASE_CIRCLE_SIZE,
+                      animationPhase: Math.random() * Math.PI * 2,
+                      vy: 0, rank: null,
+                  });
+                  return newPlayers;
               });
-              return newPlayers;
-          });
 
-          raceStartTimerId.current = setTimeout(() => {
-            setPlayers(current => { if(current.size > 0) { setGameState('RACE_READY') } return current; });
-          }, RACE_START_DELAY);
+              raceStartTimerId.current = setTimeout(() => {
+                setPlayers(current => { if(current.size > 0) { setGameState('RACE_READY') } return current; });
+              }, RACE_START_DELAY);
+              
+              // Clean up the timer from the map once it has fired.
+              playerCreationTimers.current.delete(id);
+          }, PLAYER_CREATION_DELAY);
+
+          playerCreationTimers.current.set(id, timer);
       }
       return;
     }
@@ -316,7 +333,14 @@ export default function ChronoSelect() {
   }, [gameMode]);
 
   const handlePointerUp = useCallback((id: number) => {
+    // For race mode, cancel player creation if touch is too short.
+    if (playerCreationTimers.current.has(id)) {
+      clearTimeout(playerCreationTimers.current.get(id)!);
+      playerCreationTimers.current.delete(id);
+    }
+    
     if (gameState === 'RESULT' || gameMode === 'race') return;
+
     setPlayers(currentPlayers => {
       const newPlayers = new Map(currentPlayers);
       newPlayers.delete(id);
@@ -441,27 +465,28 @@ export default function ChronoSelect() {
       playTeamSplitSound();
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(100);
 
-      setPlayers(currentPlayers => {
-        if (typeof window === 'undefined') return currentPlayers;
+      // This logic must only run on the client
+      if (typeof window !== 'undefined') {
+        setPlayers(currentPlayers => {
+            const lineupWidth = window.innerWidth * 0.8;
+            const spacing = currentPlayers.size > 1 ? lineupWidth / (currentPlayers.size - 1) : 0;
+            const startX = (window.innerWidth - lineupWidth) / 2;
+            const startY = window.innerHeight - BASE_CIRCLE_SIZE;
 
-        const lineupWidth = window.innerWidth * 0.8;
-        const spacing = currentPlayers.size > 1 ? lineupWidth / (currentPlayers.size - 1) : 0;
-        const startX = (window.innerWidth - lineupWidth) / 2;
-        const startY = window.innerHeight - BASE_CIRCLE_SIZE;
-
-        const newPlayers = new Map(currentPlayers);
-        Array.from(newPlayers.values()).forEach((p, index) => {
-            const playerToUpdate = newPlayers.get(p.id);
-            if (playerToUpdate) {
-                newPlayers.set(p.id, {
-                    ...playerToUpdate,
-                    x: startX + (index * spacing),
-                    y: startY,
-                });
-            }
+            const newPlayers = new Map(currentPlayers);
+            Array.from(newPlayers.values()).forEach((p, index) => {
+                const playerToUpdate = newPlayers.get(p.id);
+                if (playerToUpdate) {
+                    newPlayers.set(p.id, {
+                        ...playerToUpdate,
+                        x: startX + (index * spacing),
+                        y: startY,
+                    });
+                }
+            });
+            return newPlayers;
         });
-        return newPlayers;
-      });
+      }
 
       raceReadyTimerId.current = setTimeout(() => {
         setGameState('RACING');
@@ -475,7 +500,7 @@ export default function ChronoSelect() {
             const newPlayers = new Map(currentPlayers);
             newPlayers.forEach(player => {
                 if(newPlayers.has(player.id)) {
-                  newPlayers.set(player.id, {...player, vy: (Math.random() * 1.5) + 1 });
+                  newPlayers.set(player.id, {...player, vy: (Math.random() * 0.5) + 0.5 }); // Slower start speed
                 }
             });
             return newPlayers;
@@ -489,7 +514,12 @@ export default function ChronoSelect() {
   }, [gameState, playTeamSplitSound, playWinnerSound, playLoserSound, resetGame]);
 
   useEffect(() => {
-    if (gameState === 'RESULT' && gameMode !== 'race' && !Array.from(players.values()).some(t => t.isWinner || t.isLoser || t.team)) {
+    if (gameState === 'RESULT' && gameMode !== 'race') {
+      // This logic was causing a server error because it ran on every animation frame.
+      // It is now guarded to only run once when the result state is first entered.
+      const shouldRun = !Array.from(players.values()).some(p => p.isWinner || p.isLoser || p.team);
+      if (!shouldRun) return;
+
       const currentPlayers = Array.from(players.values());
       if (currentPlayers.length === 0) {
         resetGame();
@@ -569,9 +599,13 @@ export default function ChronoSelect() {
             <PopoverContent className="w-auto mr-4">
                <RadioGroup 
                   value={gameMode} 
-                  onValueChange={(value) => setGameMode(value as 'chooser' | 'teamSplit' | 'race')}
+                  onValueChange={(value) => {
+                    if (players.size === 0) {
+                      setGameMode(value as 'chooser' | 'teamSplit' | 'race');
+                    }
+                  }}
                   className="gap-4" 
-                  disabled={!['IDLE', 'WAITING', 'RACE_WAITING'].includes(gameState)}
+                  disabled={players.size > 0}
               >
                   <div className="flex items-center space-x-2">
                       <RadioGroupItem value="chooser" id="chooser-mode" />
@@ -604,3 +638,5 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
