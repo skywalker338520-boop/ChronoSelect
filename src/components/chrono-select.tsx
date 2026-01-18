@@ -163,7 +163,7 @@ export default function ChronoSelect() {
             const radius = Math.min(centerX, centerY) * 0.4;
 
             if (gameState === 'ROULETTE_SPINNING') {
-                revolverAngle.current = (revolverAngle.current + 0.0225) % (Math.PI * 2);
+                revolverAngle.current = (revolverAngle.current + 0.0225 * 0.5) % (Math.PI * 2);
             } else if (gameState === 'ROULETTE_TRIGGERING') {
                 const { startAngle, targetAngle, startTime } = decelerationData.current;
                 const duration = 200; // 200ms deceleration
@@ -183,7 +183,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.03;
+                    updatedPlayer.size *= 1.075;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -718,7 +718,7 @@ export default function ChronoSelect() {
             <PopoverContent className="w-auto mr-4">
                <RadioGroup value={gameMode} 
                   onValueChange={(value) => setGameMode(value as GameMode)}
-                  className="gap-4" disabled={players.size > 0 && gameMode !== 'russianRoulette'}>
+                  className="gap-4">
                   <div className="flex items-center space-x-2">
                       <RadioGroupItem value="chooser" id="chooser-mode" />
                       <Label htmlFor="chooser-mode" className="font-headline">Chooser</Label>
