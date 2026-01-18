@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -106,15 +107,14 @@ export default function ChronoSelect() {
       const newPlayers = new Map(currentPlayers);
       let finishedCount = 0;
       let racingCount = 0;
+      const finishersThisFrame: Player[] = [];
 
       newPlayers.forEach((player, id) => {
         let updatedPlayer = { ...player };
 
         if (gameState === 'RESULT' && player.isWinner) {
-            // Expand to fill screen, stop breathing.
             updatedPlayer.size *= 1.0765;
         } else if (gameState === 'RESULT' && player.isLoser) {
-            // Shrink and fade faster.
             updatedPlayer.size *= 0.9;
             updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
         } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
@@ -129,9 +129,7 @@ export default function ChronoSelect() {
             if (updatedPlayer.y <= updatedPlayer.size / 2) {
                 updatedPlayer.y = updatedPlayer.size / 2;
                 updatedPlayer.vy = 0;
-                updatedPlayer.rank = nextRank.current++;
-                playTick(2);
-                if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+                finishersThisFrame.push(updatedPlayer); // Add to list to be ranked later
             }
         }
         else {
@@ -146,10 +144,22 @@ export default function ChronoSelect() {
            newPlayers.set(id, updatedPlayer);
         }
 
-        if (updatedPlayer.rank !== null) {
+        if (player.rank !== null) { // Check original rank
             finishedCount++;
         }
       });
+
+      // Sort and rank any players that finished this frame
+      if (finishersThisFrame.length > 0) {
+        finishersThisFrame.sort((a, b) => a.y - b.y);
+        for (const finisher of finishersThisFrame) {
+            finisher.rank = nextRank.current++;
+            newPlayers.set(finisher.id, finisher); // Update the map with the ranked player
+            playTick(2);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+        }
+        finishedCount += finishersThisFrame.length;
+      }
 
       if (gameState === 'RACING' && racingCount > 0 && finishedCount === newPlayers.size) {
         setTimeout(() => setGameState('RACE_FINISH'), 500);
@@ -595,3 +605,5 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
