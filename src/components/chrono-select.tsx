@@ -163,7 +163,7 @@ export default function ChronoSelect() {
             const radius = Math.min(centerX, centerY) * 0.4;
 
             if (gameState === 'ROULETTE_SPINNING') {
-                revolverAngle.current = (revolverAngle.current + 0.0225 * 0.5) % (Math.PI * 2);
+                revolverAngle.current = (revolverAngle.current + 0.0225 * 0.5 * 0.5) % (Math.PI * 2);
             } else if (gameState === 'ROULETTE_TRIGGERING') {
                 const { startAngle, targetAngle, startTime } = decelerationData.current;
                 const duration = 200; // 200ms deceleration
@@ -183,7 +183,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.075;
+                    updatedPlayer.size *= 1.15;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -224,8 +224,8 @@ export default function ChronoSelect() {
                             updatedPlayer.raceDirection = 'down';
                         }
                     } else { // raceDirection is 'down'
-                        updatedPlayer.y += updatedPlayer.vy;
                         if(canvas) {
+                            updatedPlayer.y += updatedPlayer.vy;
                             const startY = canvas.height - (updatedPlayer.baseSize / 2);
                             if (updatedPlayer.y >= startY) {
                                 updatedPlayer.y = startY;
@@ -492,11 +492,8 @@ export default function ChronoSelect() {
   }, [resetGame, players.size, gameMode, gameState]);
 
   useEffect(() => {
-    if (gameMode === 'russianRoulette') {
-        setupRoulette();
-    } else {
-        resetGame();
-    }
+    // This allows changing modes at any time, which will reset the game.
+    resetGame();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameMode]);
   
@@ -612,24 +609,57 @@ export default function ChronoSelect() {
   useEffect(() => {
     if (gameState === 'ROULETTE_TRIGGERING' && prevGameState !== 'ROULETTE_TRIGGERING') {
       setInteractionLocked(true);
-      const sightAngle = -Math.PI / 2;
-      let closestChamber: Player | null = null;
-      let minAngleDiff = Infinity;
+      
+      const sightAngle = -Math.PI / 2; // Top of the circle
+      let nextChamber: Player | null = null;
+      let minPositiveDiff = Infinity;
       let finalRevolverAngle = revolverAngle.current;
 
+      // First, try to find the next chamber from the left hemisphere
       players.forEach(p => {
           if (p.angle === undefined) return;
-          const effectiveAngle = (p.angle + revolverAngle.current) % (Math.PI * 2);
-          let diff = sightAngle - effectiveAngle;
-          if (diff > Math.PI) diff -= 2 * Math.PI;
-          if (diff < -Math.PI) diff += 2 * Math.PI;
+          
+          const effectiveAngle = (p.angle + revolverAngle.current) % (2 * Math.PI);
 
-          if (Math.abs(diff) < minAngleDiff) {
-              minAngleDiff = Math.abs(diff);
-              closestChamber = p;
-              finalRevolverAngle = revolverAngle.current + diff;
+          // Check if the chamber is currently in the left-hand side of its rotation
+          const isInLeftHemisphere = effectiveAngle > Math.PI / 2 && effectiveAngle < (1.5 * Math.PI);
+          
+          if (isInLeftHemisphere) {
+              // Calculate the forward (CCW) angular distance to the sight
+              let diff = sightAngle - effectiveAngle;
+              if (diff < 0) {
+                  diff += 2 * Math.PI;
+              }
+
+              if (diff < minPositiveDiff) {
+                  minPositiveDiff = diff;
+                  nextChamber = p;
+                  finalRevolverAngle = revolverAngle.current + diff;
+              }
           }
       });
+      
+      // If no chamber was found in the left hemisphere (e.g. all on the right),
+      // find the overall next chamber that will reach the sight.
+      if (!nextChamber) {
+        minPositiveDiff = Infinity; // Reset for the fallback search
+        players.forEach(p => {
+            if (p.angle === undefined) return;
+            const effectiveAngle = (p.angle + revolverAngle.current) % (2 * Math.PI);
+            
+            let diff = sightAngle - effectiveAngle;
+            if (diff <= 0) { // use <= to include a chamber that is exactly at the sight
+                diff += 2 * Math.PI;
+            }
+            if (diff < minPositiveDiff) {
+                minPositiveDiff = diff;
+                nextChamber = p;
+                finalRevolverAngle = revolverAngle.current + diff;
+            }
+        });
+      }
+
+      const closestChamber = nextChamber;
       
       if (!closestChamber) { 
           setInteractionLocked(false); 
