@@ -1,92 +1,70 @@
-const CACHE_NAME = 'chronoselect-v2'; // Incremented version
-const PRECACHE_ASSETS = [
-  '/',
-  '/manifest.json'
-];
+const CACHE_NAME = 'chronoselect-v2';
+
+// This is a basic service worker that enables offline functionality.
+// It uses a "cache-first" strategy.
 
 self.addEventListener('install', (event) => {
+  // Perform install steps
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache and precaching assets');
-        // Use addAll for atomic precaching
-        return cache.addAll(PRECACHE_ASSETS);
-      })
-      .then(() => {
-        // Force the waiting service worker to become the active service worker.
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('Pre-caching failed:', error);
+        console.log('Service Worker: Caching app shell');
+        // Note: The actual assets (JS/CSS) are dynamically named by the build process.
+        // A more advanced service worker would get this list from the build manifest.
+        // For now, we'll cache the main entry points.
+        return cache.addAll([
+          '/',
+          '/manifest.json',
+        ]);
       })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  const currentCaches = [CACHE_NAME];
+  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (!currentCaches.includes(cacheName)) {
-            console.log('Deleting old cache:', cacheName);
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => {
-      // Tell the active service worker to take control of the page immediately.
-      return self.clients.claim();
     })
   );
+  return self.clients.claim();
 });
 
+
 self.addEventListener('fetch', (event) => {
-  // We only want to handle GET requests
+  // We only want to handle GET requests.
   if (event.request.method !== 'GET') {
     return;
   }
-  
-  const url = new URL(event.request.url);
 
-  // Use a network-first strategy for navigation and root requests.
-  if (event.request.mode === 'navigate' || url.pathname === '/') {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // If we get a good response, cache it
-          if (response.ok) {
-            const cacheCopy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, cacheCopy);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // If network fails, serve the root from cache as a fallback for navigation.
-          return caches.match('/');
-        })
-    );
-    return;
-  }
-
-  // For other requests (CSS, JS, images, manifest), use a cache-first strategy
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        // If we get a good response, cache it for future use
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((response) => {
+        // Return response from cache if found.
+        if (response) {
+          return response;
         }
-        return networkResponse;
+
+        // Otherwise, fetch from network, cache it, and then return it.
+        return fetch(event.request).then((networkResponse) => {
+          // Check for a valid response
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        });
+      }).catch(error => {
+        // If both cache and network fail, we can show an offline fallback page.
+        // For now, we'll just log the error.
+        console.error('Service Worker: Error fetching resource.', error);
+        // You could return a fallback page here: return caches.match('/offline.html');
       });
     })
   );
