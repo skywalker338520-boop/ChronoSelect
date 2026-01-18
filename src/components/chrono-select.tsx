@@ -112,8 +112,8 @@ export default function ChronoSelect() {
             id, x: 0, y: 0,
             isWinner: false, isLoser: false, team: null,
             hue: 0, saturation: 0, opacity: 1,
-            size: (BASE_CIRCLE_SIZE * 0.64) * 0.8,
-            baseSize: (BASE_CIRCLE_SIZE * 0.64) * 0.8,
+            size: (BASE_CIRCLE_SIZE * 0.64 * 0.8),
+            baseSize: (BASE_CIRCLE_SIZE * 0.64 * 0.8),
             animationPhase: Math.random() * Math.PI * 2,
             vy: 0, rank: null, raceDirection: 'up',
             isBullet: i === bulletIndex,
@@ -158,7 +158,7 @@ export default function ChronoSelect() {
         if (gameState === 'ROULETTE_SPINNING') {
             const remainingCount = players.size;
             const speedMultiplier = (7 - remainingCount) * 0.5;
-            revolverAngle.current = (revolverAngle.current + 0.0075 * speedMultiplier) % (Math.PI * 2);
+            revolverAngle.current = (revolverAngle.current + 0.0225 * speedMultiplier) % (Math.PI * 2);
         } else if (gameState === 'ROULETTE_TRIGGERING') {
             const { startAngle, targetAngle, startTime } = decelerationData.current;
             const duration = 200; // 200ms deceleration
@@ -175,21 +175,20 @@ export default function ChronoSelect() {
             }
         }
         
-        setPlayers(currentPlayers => {
-            const newPlayers = new Map(currentPlayers);
-            newPlayers.forEach((p, id) => {
-                let updatedPlayer = {...p};
-                if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.01;
-                } else if(p.angle !== undefined) {
-                    const currentAngle = p.angle + revolverAngle.current;
-                    updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
-                    updatedPlayer.y = centerY + Math.sin(currentAngle) * radius;
-                }
-                newPlayers.set(id, updatedPlayer);
-            });
-            return newPlayers;
+        const currentPlayers = new Map(players);
+        currentPlayers.forEach((p, id) => {
+            let updatedPlayer = {...p};
+            if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
+                updatedPlayer.size *= 1.04;
+            } else if(p.angle !== undefined) {
+                const currentAngle = p.angle + revolverAngle.current;
+                updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
+                updatedPlayer.y = centerY + Math.sin(currentAngle) * radius;
+            }
+            currentPlayers.set(id, updatedPlayer);
         });
+        setPlayers(currentPlayers);
+
 
     } else { // Other game modes
         setPlayers(currentPlayers => {
@@ -261,7 +260,7 @@ export default function ChronoSelect() {
     }
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, gameMode, playTick, players.size]);
+  }, [gameState, gameMode, playTick, players]);
 
   // Drawing useEffect
   useEffect(() => {
@@ -288,7 +287,7 @@ export default function ChronoSelect() {
     if (gameMode === 'russianRoulette') {
         const centerX = canvas.width / 2;
         const radius = Math.min(centerX, canvas.height / 2) * 0.4;
-        const circleSize = (BASE_CIRCLE_SIZE * 0.64) * 0.8;
+        const circleSize = (BASE_CIRCLE_SIZE * 0.64 * 0.8);
         const sightY = (canvas.height / 2) - radius - (circleSize / 2) - 10;
         
         ctx.save();
@@ -367,6 +366,7 @@ export default function ChronoSelect() {
 
     if (gameMode === 'russianRoulette') {
         if (gameState === 'ROULETTE_SPINNING') {
+            decelerationData.current.startTime = performance.now();
             hasFiredRef.current = false; // Reset the guard flag
             setGameState('ROULETTE_TRIGGERING');
         }
@@ -628,9 +628,9 @@ export default function ChronoSelect() {
       }
       
       decelerationData.current = {
+          ...decelerationData.current,
           startAngle: revolverAngle.current,
           targetAngle: finalRevolverAngle,
-          startTime: performance.now(),
           chamber: closestChamber
       };
     }
