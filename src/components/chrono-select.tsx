@@ -87,7 +87,7 @@ export default function ChronoSelect() {
   const decelerationData = useRef<{startAngle: number, targetAngle: number, startTime: number, chamber: Player | null}>({startAngle: 0, targetAngle: 0, startTime: 0, chamber: null});
   const hasFiredRef = useRef(false);
 
-  const isMouseDown = useRef(isMouseDown);
+  const isMouseDown = useRef(false);
   const MOUSE_IDENTIFIER = -1;
   const nextPlayerId = useRef(0);
   const gameOverPlayerId = useRef<number | null>(null);
@@ -180,7 +180,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.03;
+                    updatedPlayer.size *= 1.01;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -473,7 +473,14 @@ export default function ChronoSelect() {
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => { for (const touch of Array.from(e.changedTouches)) { handlePointerDown(touch.clientX, touch.clientY, touch.identifier); } };
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => { for (const touch of Array.from(e.changedTouches)) { handlePointerMove(touch.clientX, touch.clientY, touch.identifier); } };
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => { for (const touch of Array.from(e.changedTouches)) { handlePointerUp(touch.identifier); } };
-  const handleContextMenu = useCallback((e: React.MouseEvent) => { e.preventDefault(); if(players.size > 0) resetGame(); }, [resetGame, players.size]);
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+      e.preventDefault();
+      if (gameMode === 'russianRoulette' && gameState === 'ROULETTE_GAMEOVER') {
+          resetGame();
+      } else if(players.size > 0) {
+          resetGame();
+      }
+  }, [resetGame, players.size, gameMode, gameState]);
 
   useEffect(() => {
     if (gameMode === 'russianRoulette') {
