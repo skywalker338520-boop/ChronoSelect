@@ -112,8 +112,8 @@ export default function ChronoSelect() {
             id, x: 0, y: 0,
             isWinner: false, isLoser: false, team: null,
             hue: 0, saturation: 0, opacity: 1,
-            size: BASE_CIRCLE_SIZE * 0.8,
-            baseSize: BASE_CIRCLE_SIZE * 0.8,
+            size: BASE_CIRCLE_SIZE * 0.64,
+            baseSize: BASE_CIRCLE_SIZE * 0.64,
             animationPhase: Math.random() * Math.PI * 2,
             vy: 0, rank: null, raceDirection: 'up',
             isBullet: i === bulletIndex,
@@ -252,7 +252,6 @@ export default function ChronoSelect() {
                 }
                 playTick(2);
                 if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
-                finishedRacerCount += finishersThisFrame.length;
             }
             if (gameState === 'RACING' && racingCount > 0 && newPlayers.size > 0 && finishedRacerCount === newPlayers.size) {
                 setTimeout(() => setGameState('RACE_FINISH'), 500);
@@ -289,7 +288,7 @@ export default function ChronoSelect() {
     if (gameMode === 'russianRoulette') {
         const centerX = canvas.width / 2;
         const radius = Math.min(centerX, canvas.height / 2) * 0.4;
-        const circleSize = BASE_CIRCLE_SIZE * 0.8;
+        const circleSize = BASE_CIRCLE_SIZE * 0.64;
         const sightY = (canvas.height / 2) - radius - (circleSize / 2) - 10;
         
         ctx.save();
@@ -746,3 +745,5 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
