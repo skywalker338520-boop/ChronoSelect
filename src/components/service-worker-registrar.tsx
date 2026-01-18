@@ -23,11 +23,6 @@ export default function ServiceWorkerRegistrar() {
                         title: 'Update Available',
                         description: 'A new version is ready. Close and reopen the app to apply it.',
                       });
-                    } else {
-                      toast({
-                        title: 'App ready for offline use',
-                        description: 'This app will now work even without an internet connection.',
-                      });
                     }
                   }
                 };

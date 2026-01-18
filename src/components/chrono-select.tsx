@@ -150,46 +150,51 @@ export default function ChronoSelect() {
   // Animation loop
   const animate = useCallback(() => {
     const canvas = canvasRef.current;
-    if (gameMode === 'russianRoulette' && canvas) {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radius = Math.min(centerX, centerY) * 0.4;
+    if (!canvas) {
+        animationFrameId.current = requestAnimationFrame(animate);
+        return;
+    }
 
-        if (gameState === 'ROULETTE_SPINNING') {
-            const remainingCount = players.size;
-            const speedMultiplier = (7 - remainingCount) * 0.5;
-            revolverAngle.current = (revolverAngle.current + 0.0225 * speedMultiplier) % (Math.PI * 2);
-        } else if (gameState === 'ROULETTE_TRIGGERING') {
-            const { startAngle, targetAngle, startTime } = decelerationData.current;
-            const duration = 200; // 200ms deceleration
-            const elapsed = performance.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
+    if (gameMode === 'russianRoulette') {
+        setPlayers(players => {
+            const newPlayers = new Map(players);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) * 0.4;
+
+            if (gameState === 'ROULETTE_SPINNING') {
+                const remainingCount = newPlayers.size;
+                const speedMultiplier = (7 - remainingCount) * 0.5;
+                revolverAngle.current = (revolverAngle.current + 0.0225 * 4 * speedMultiplier) % (Math.PI * 2);
+            } else if (gameState === 'ROULETTE_TRIGGERING') {
+                const { startAngle, targetAngle, startTime } = decelerationData.current;
+                const duration = 200; // 200ms deceleration
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Ease-out cubic curve
+                const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+                revolverAngle.current = startAngle + (targetAngle - startAngle) * easedProgress;
+
+                if (progress >= 1 && !hasFiredRef.current) {
+                    setGameState('ROULETTE_FIRING');
+                }
+            }
             
-            // Ease-out cubic curve
-            const easedProgress = 1 - Math.pow(1 - progress, 3);
-
-            revolverAngle.current = startAngle + (targetAngle - startAngle) * easedProgress;
-
-            if (progress >= 1 && !hasFiredRef.current) {
-                setGameState('ROULETTE_FIRING');
-            }
-        }
-        
-        const currentPlayers = new Map(players);
-        currentPlayers.forEach((p, id) => {
-            let updatedPlayer = {...p};
-            if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                updatedPlayer.size *= 1.04;
-            } else if(p.angle !== undefined) {
-                const currentAngle = p.angle + revolverAngle.current;
-                updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
-                updatedPlayer.y = centerY + Math.sin(currentAngle) * radius;
-            }
-            currentPlayers.set(id, updatedPlayer);
+            newPlayers.forEach((p, id) => {
+                let updatedPlayer = {...p};
+                if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
+                    updatedPlayer.size *= 1.16;
+                } else if(p.angle !== undefined) {
+                    const currentAngle = p.angle + revolverAngle.current;
+                    updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
+                    updatedPlayer.y = centerY + Math.sin(currentAngle) * radius;
+                }
+                newPlayers.set(id, updatedPlayer);
+            });
+            return newPlayers;
         });
-        setPlayers(currentPlayers);
-
-
     } else { // Other game modes
         setPlayers(currentPlayers => {
             let finishedRacerCount = 0;
@@ -211,10 +216,10 @@ export default function ChronoSelect() {
                 } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
                     racingCount++;
                     if (Math.random() < 0.05) {
-                        const speedBoost = (Math.random() - 0.45) * 5; // Increased fluctuation
+                        const speedBoost = (Math.random() - 0.45) * 10; // Increased fluctuation
                         updatedPlayer.vy += speedBoost;
                     }
-                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 12)); // Increased max speed
+                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 15)); // Increased max speed
 
                     if (updatedPlayer.raceDirection === 'up') {
                         updatedPlayer.y -= updatedPlayer.vy;
@@ -260,7 +265,7 @@ export default function ChronoSelect() {
     }
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, gameMode, playTick, players]);
+  }, [gameState, gameMode, playTick]);
 
   // Drawing useEffect
   useEffect(() => {
