@@ -759,22 +759,22 @@ export default function ChronoSelect() {
                <RadioGroup value={gameMode} 
                   onValueChange={(value) => setGameMode(value as GameMode)}
                   className="gap-4">
-                  <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="chooser" id="chooser-mode" />
-                      <Label htmlFor="chooser-mode" className="font-headline">Chooser</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="teamSplit" id="teamsplit-mode" />
-                      <Label htmlFor="teamsplit-mode" className="font-headline">Team Split</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="race" id="race-mode" />
-                      <Label htmlFor="race-mode" className="font-headline">Race</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="russianRoulette" id="roulette-mode" />
-                      <Label htmlFor="roulette-mode" className="font-headline">Russian Roulette</Label>
-                  </div>
+                  <Label className="flex items-center space-x-2 font-headline cursor-pointer">
+                    <RadioGroupItem value="chooser" id="chooser-mode" />
+                    <span>Chooser</span>
+                  </Label>
+                  <Label className="flex items-center space-x-2 font-headline cursor-pointer">
+                    <RadioGroupItem value="teamSplit" id="teamsplit-mode" />
+                    <span>Team Split</span>
+                  </Label>
+                  <Label className="flex items-center space-x-2 font-headline cursor-pointer">
+                    <RadioGroupItem value="race" id="race-mode" />
+                    <span>Race</span>
+                  </Label>
+                  <Label className="flex items-center space-x-2 font-headline cursor-pointer">
+                    <RadioGroupItem value="russianRoulette" id="roulette-mode" />
+                    <span>Russian Roulette</span>
+                  </Label>
               </RadioGroup>
               <Separator className="my-4" />
               <div>
