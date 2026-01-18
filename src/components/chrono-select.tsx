@@ -87,7 +87,7 @@ export default function ChronoSelect() {
   const decelerationData = useRef<{startAngle: number, targetAngle: number, startTime: number, chamber: Player | null}>({startAngle: 0, targetAngle: 0, startTime: 0, chamber: null});
   const hasFiredRef = useRef(false);
 
-  const isMouseDown = useRef(false);
+  const isMouseDown = useRef(isMouseDown);
   const MOUSE_IDENTIFIER = -1;
   const nextPlayerId = useRef(0);
   const gameOverPlayerId = useRef<number | null>(null);
@@ -180,7 +180,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.06;
+                    updatedPlayer.size *= 1.03;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -215,7 +215,7 @@ export default function ChronoSelect() {
                         const speedBoost = (Math.random() - 0.45) * 5; // Increased fluctuation
                         updatedPlayer.vy += speedBoost;
                     }
-                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 8)); // Increased max speed
+                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 12)); // Increased max speed
 
                     if (updatedPlayer.raceDirection === 'up') {
                         updatedPlayer.y -= updatedPlayer.vy;
@@ -358,14 +358,18 @@ export default function ChronoSelect() {
   }, [animate]);
 
   const handlePointerDown = useCallback((x: number, y: number, id: number) => {
+    // Handle game over reset first, ignoring interaction lock
+    if (gameMode === 'russianRoulette' && gameState === 'ROULETTE_GAMEOVER') {
+        resetGame();
+        return;
+    }
+
     if (interactionLocked) return;
 
     if (gameMode === 'russianRoulette') {
         if (gameState === 'ROULETTE_SPINNING') {
             hasFiredRef.current = false; // Reset the guard flag
             setGameState('ROULETTE_TRIGGERING');
-        } else if (gameState === 'ROULETTE_GAMEOVER') {
-            resetGame();
         }
         return;
     }
@@ -728,7 +732,7 @@ export default function ChronoSelect() {
 
         {gameState === 'RACE_READY' && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-white text-2xl font-headline animate-pulse">Ready...</p>
+                <p className="text-white text-lg font-headline animate-pulse">Ready...</p>
             </div>
         )}
 
@@ -740,3 +744,5 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
