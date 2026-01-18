@@ -353,7 +353,6 @@ export default function ChronoSelect() {
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) return;
-    e.preventDefault();
     if (e.button !== 0) return;
     isMouseDown.current = true;
     handlePointerDown(e.clientX, e.clientY, MOUSE_IDENTIFIER);
@@ -373,7 +372,6 @@ export default function ChronoSelect() {
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest('[data-radix-popover-trigger]') || target.closest('[data-radix-popover-content]')) return;
-    e.preventDefault();
     for (const touch of Array.from(e.changedTouches)) {
       handlePointerDown(touch.clientX, touch.clientY, touch.identifier);
     }
@@ -638,5 +636,3 @@ export default function ChronoSelect() {
     </div>
   );
 }
-
-    
