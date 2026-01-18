@@ -124,11 +124,11 @@ export default function ChronoSelect() {
                 
                 // Add more dramatic, less frequent speed changes for a "horse race" effect
                 if (Math.random() < 0.05) { // 5% chance each frame to change speed
-                    const speedBoost = (Math.random() - 0.4) * 2; // Skewed towards positive boosts
+                    const speedBoost = (Math.random() - 0.45) * 3; // Skewed towards positive boosts, but with higher volatility
                     updatedPlayer.vy += speedBoost;
                 }
                 // Clamp velocity to a reasonable range
-                updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 4));
+                updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 5));
 
 
                 if (updatedPlayer.raceDirection === 'up') {
