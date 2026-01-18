@@ -169,7 +169,7 @@ export default function ChronoSelect() {
             
             if (gameState === 'ROULETTE_SPINNING' || gameState === 'ROULETTE_TRIGGERING') {
                 spinAngle.current += 0.01; // Controls how fast the speed changes
-                const baseSpeed = 0.026;
+                const baseSpeed = 0.0546;
                 const fluctuation = Math.sin(spinAngle.current) * (baseSpeed * 0.4);
                 const spinSpeed = baseSpeed + fluctuation;
 
@@ -192,7 +192,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.15;
+                    updatedPlayer.size *= 1.225;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -780,7 +780,7 @@ export default function ChronoSelect() {
               <div>
                 <Label className="font-headline">Background</Label>
                 <div className="mt-2 flex gap-2">
-                  {['#000000', '#1a1a1a', '#2c003e', '#002c3e', '#2a3e00'].map((color) => (
+                  {['#000000', '#155843', '#2D0A31', '#2B2B2B', '#3D0000'].map((color) => (
                     <button
                       key={color}
                       onClick={() => setBackgroundColor(color)}
