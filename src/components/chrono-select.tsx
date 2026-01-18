@@ -92,6 +92,12 @@ export default function ChronoSelect() {
   const nextPlayerId = useRef(0);
   const gameOverPlayerId = useRef<number | null>(null);
 
+  const prevGameStateRef = useRef<GameState>();
+  useEffect(() => {
+    prevGameStateRef.current = gameState;
+  });
+  const prevGameState = prevGameStateRef.current;
+
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound, playClickSound, playGunshotSound } = useSound();
 
   const setupRoulette = useCallback(() => {
@@ -584,8 +590,7 @@ export default function ChronoSelect() {
 
   // Russian Roulette Logic
   useEffect(() => {
-    // This effect now only PREPARES the animation data
-    if (gameState === 'ROULETTE_TRIGGERING') {
+    if (gameState === 'ROULETTE_TRIGGERING' && prevGameState !== 'ROULETTE_TRIGGERING') {
       setInteractionLocked(true);
       const sightAngle = -Math.PI / 2;
       let closestChamber: Player | null = null;
@@ -619,7 +624,8 @@ export default function ChronoSelect() {
           chamber: closestChamber
       };
     }
-  }, [gameState, players]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, prevGameState, players]);
 
   useEffect(() => {
     rouletteTimers.current.forEach(timer => clearTimeout(timer));
@@ -669,6 +675,7 @@ export default function ChronoSelect() {
       rouletteTimers.current.forEach(timer => clearTimeout(timer));
       rouletteTimers.current = [];
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, playGunshotSound, playClickSound]);
 
   return (
@@ -733,7 +740,3 @@ export default function ChronoSelect() {
     </div>
   );
 }
-
-    
-
-    
