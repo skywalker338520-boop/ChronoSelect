@@ -1,1 +1,1 @@
-entrypoint: npm run start
+entrypoint: echo "Static site build. No server to start."
