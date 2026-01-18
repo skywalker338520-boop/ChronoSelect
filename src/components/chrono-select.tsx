@@ -21,7 +21,7 @@ const PLAYER_CREATION_DELAY = 200; // Minimal contact time to create a player in
 const BASE_CIRCLE_SIZE = 130.345;
 const ROULETTE_CHAMBERS = 6;
 
-type GameState = 'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT' | 'RACE_WAITING' | 'RACE_READY' | 'RACING' | 'RACE_FINISH' | 'ROULETTE_SPINNING' | 'ROULETTE_TRIGGERING' | 'ROULETTE_GAMEOVER';
+type GameState = 'IDLE' | 'WAITING' | 'COUNTDOWN' | 'RESULT' | 'RACE_WAITING' | 'RACE_READY' | 'RACING' | 'RACE_FINISH' | 'ROULETTE_SPINNING' | 'ROULETTE_TRIGGERING' | 'ROULETTE_FIRING' | 'ROULETTE_GAMEOVER';
 type GameMode = 'chooser' | 'teamSplit' | 'race' | 'russianRoulette';
 
 const getDistinctHue = (existingHues: number[]): number => {
@@ -84,6 +84,7 @@ export default function ChronoSelect() {
   const raceReadyTimerId = useRef<NodeJS.Timeout>();
   const playerCreationTimers = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const rouletteTimers = useRef<NodeJS.Timeout[]>([]);
+  const decelerationData = useRef<{startAngle: number, targetAngle: number, startTime: number, chamber: Player | null}>({startAngle: 0, targetAngle: 0, startTime: 0, chamber: null});
 
   const isMouseDown = useRef(false);
   const MOUSE_IDENTIFIER = -1;
@@ -151,6 +152,20 @@ export default function ChronoSelect() {
             const remainingCount = players.size;
             const speedMultiplier = (7 - remainingCount) * 0.5;
             revolverAngle.current = (revolverAngle.current + 0.005 * speedMultiplier) % (Math.PI * 2);
+        } else if (gameState === 'ROULETTE_TRIGGERING') {
+            const { startAngle, targetAngle, startTime } = decelerationData.current;
+            const duration = 200; // 200ms deceleration
+            const elapsed = performance.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Ease-out cubic curve
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+            revolverAngle.current = startAngle + (targetAngle - startAngle) * easedProgress;
+
+            if (progress >= 1) {
+                setGameState('ROULETTE_FIRING');
+            }
         }
         
         setPlayers(currentPlayers => {
@@ -567,74 +582,90 @@ export default function ChronoSelect() {
 
   // Russian Roulette Logic
   useEffect(() => {
+    // This effect now only PREPARES the animation data
+    if (gameState === 'ROULETTE_TRIGGERING') {
+      setInteractionLocked(true);
+      const sightAngle = -Math.PI / 2;
+      let closestChamber: Player | null = null;
+      let minAngleDiff = Infinity;
+      let finalRevolverAngle = revolverAngle.current;
+
+      players.forEach(p => {
+          if (p.angle === undefined) return;
+          const effectiveAngle = (p.angle + revolverAngle.current) % (Math.PI * 2);
+          let diff = sightAngle - effectiveAngle;
+          if (diff > Math.PI) diff -= 2 * Math.PI;
+          if (diff < -Math.PI) diff += 2 * Math.PI;
+
+          if (Math.abs(diff) < minAngleDiff) {
+              minAngleDiff = Math.abs(diff);
+              closestChamber = p;
+              finalRevolverAngle = revolverAngle.current + diff;
+          }
+      });
+      
+      if (!closestChamber) { 
+          setInteractionLocked(false); 
+          setGameState('ROULETTE_SPINNING'); 
+          return; 
+      }
+      
+      decelerationData.current = {
+          startAngle: revolverAngle.current,
+          targetAngle: finalRevolverAngle,
+          startTime: performance.now(),
+          chamber: closestChamber
+      };
+    }
+  }, [gameState, players]);
+
+  useEffect(() => {
     rouletteTimers.current.forEach(timer => clearTimeout(timer));
     rouletteTimers.current = [];
 
-    if (gameState === 'ROULETTE_TRIGGERING') {
-        setInteractionLocked(true);
-
-        const sightAngle = -Math.PI / 2;
-        let closestChamber: Player | null = null;
-        let minAngleDiff = Infinity;
-        let finalRevolverAngle = revolverAngle.current;
-
-        players.forEach(p => {
-            if (p.angle === undefined) return;
-            const effectiveAngle = (p.angle + revolverAngle.current) % (Math.PI * 2);
-            let diff = sightAngle - effectiveAngle;
-            if (diff > Math.PI) diff -= 2 * Math.PI;
-            if (diff < -Math.PI) diff += 2 * Math.PI;
-
-            if (Math.abs(diff) < minAngleDiff) {
-                minAngleDiff = Math.abs(diff);
-                closestChamber = p;
-                finalRevolverAngle = revolverAngle.current + diff;
-            }
-        });
-        
-        if (!closestChamber) { setInteractionLocked(false); setGameState('ROULETTE_SPINNING'); return; }
-
-        const decelerationTimer = setTimeout(() => {
-            revolverAngle.current = finalRevolverAngle;
-
-            const chamberToFire = closestChamber!;
-            const triggerOutcomeTimer = setTimeout(() => {
-                if (chamberToFire.isBullet) {
-                    playGunshotSound(); if (navigator.vibrate) navigator.vibrate(500);
-                    gameOverPlayerId.current = chamberToFire.id;
-                    setGameState('ROULETTE_GAMEOVER');
-                    const unlockTimer = setTimeout(() => setInteractionLocked(false), 2000);
-                    rouletteTimers.current.push(unlockTimer);
-                } else {
-                    playClickSound(); if (navigator.vibrate) navigator.vibrate(50);
-                    setPlayers(current => {
-                        const newPlayers = new Map(current);
-                        newPlayers.delete(chamberToFire.id);
-                        if (newPlayers.size === 1 && Array.from(newPlayers.values())[0].isBullet) {
-                           // Last one is the bullet, auto-lose
-                           setTimeout(() => {
-                            playGunshotSound(); if (navigator.vibrate) navigator.vibrate(500);
-                            gameOverPlayerId.current = Array.from(newPlayers.values())[0].id;
-                            setGameState('ROULETTE_GAMEOVER');
-                            const unlockTimer = setTimeout(() => setInteractionLocked(false), 2000);
-                            rouletteTimers.current.push(unlockTimer);
-                           }, 500);
-                        }
-                        return newPlayers;
-                    });
-                    const resumeTimer = setTimeout(() => { setGameState('ROULETTE_SPINNING'); setInteractionLocked(false); }, 300);
-                    rouletteTimers.current.push(resumeTimer);
-                }
-            }, 300);
-            rouletteTimers.current.push(triggerOutcomeTimer);
-        }, 200);
-        rouletteTimers.current.push(decelerationTimer);
+    if (gameState === 'ROULETTE_FIRING') {
+      const { chamber } = decelerationData.current;
+      if (!chamber) {
+        setGameState('ROULETTE_SPINNING');
+        setInteractionLocked(false);
+        return;
+      }
+      
+      if (chamber.isBullet) {
+          playGunshotSound(); if (navigator.vibrate) navigator.vibrate(500);
+          gameOverPlayerId.current = chamber.id;
+          setGameState('ROULETTE_GAMEOVER');
+          const unlockTimer = setTimeout(() => setInteractionLocked(false), 2000);
+          rouletteTimers.current.push(unlockTimer);
+      } else {
+          playClickSound(); if (navigator.vibrate) navigator.vibrate(50);
+          setPlayers(current => {
+              const newPlayers = new Map(current);
+              newPlayers.delete(chamber.id);
+              if (newPlayers.size === 1 && Array.from(newPlayers.values())[0].isBullet) {
+                  const autoLoseTimer = setTimeout(() => {
+                      playGunshotSound(); if (navigator.vibrate) navigator.vibrate(500);
+                      gameOverPlayerId.current = Array.from(newPlayers.values())[0].id;
+                      setGameState('ROULETTE_GAMEOVER');
+                      const unlockTimer = setTimeout(() => setInteractionLocked(false), 2000);
+                      rouletteTimers.current.push(unlockTimer);
+                  }, 500);
+                  rouletteTimers.current.push(autoLoseTimer);
+              }
+              return newPlayers;
+          });
+          const resumeTimer = setTimeout(() => { 
+              setGameState('ROULETTE_SPINNING'); 
+              setInteractionLocked(false); 
+          }, 300);
+          rouletteTimers.current.push(resumeTimer);
+      }
     }
     return () => {
       rouletteTimers.current.forEach(timer => clearTimeout(timer));
       rouletteTimers.current = [];
     }
-  }, [gameState, playGunshotSound, playClickSound, resetGame]);
+  }, [gameState, playGunshotSound, playClickSound]);
 
   return (
     <div 
@@ -698,5 +729,7 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
 
     
