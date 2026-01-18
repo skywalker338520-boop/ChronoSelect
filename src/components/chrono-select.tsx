@@ -79,7 +79,6 @@ export default function ChronoSelect() {
   const isMouseDown = useRef(false);
   const MOUSE_IDENTIFIER = -1; // Use a constant identifier for the mouse
   const nextPlayerId = useRef(0);
-  const nextRank = useRef(1);
 
   const { playTick, playWinnerSound, playTeamSplitSound, playLoserSound } = useSound();
 
@@ -94,7 +93,6 @@ export default function ChronoSelect() {
     if (raceStartTimerId.current) clearTimeout(raceStartTimerId.current);
     if (raceReadyTimerId.current) clearTimeout(raceReadyTimerId.current);
     nextPlayerId.current = 0;
-    nextRank.current = 1;
   }, []);
 
   // Animation loop for STATE UPDATES
@@ -151,9 +149,10 @@ export default function ChronoSelect() {
 
       // Sort and rank any players that finished this frame
       if (finishersThisFrame.length > 0) {
+        let rankToAssign = finishedCount + 1;
         finishersThisFrame.sort((a, b) => a.y - b.y);
         for (const finisher of finishersThisFrame) {
-            finisher.rank = nextRank.current++;
+            finisher.rank = rankToAssign++;
             newPlayers.set(finisher.id, finisher); // Update the map with the ranked player
             playTick(2);
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
@@ -169,7 +168,7 @@ export default function ChronoSelect() {
     });
 
     animationFrameId.current = requestAnimationFrame(animate);
-  }, [gameState, playTick, nextRank]);
+  }, [gameState, playTick]);
 
   // useEffect for DRAWING
   useEffect(() => {
@@ -605,5 +604,7 @@ export default function ChronoSelect() {
     </div>
   );
 }
+
+    
 
     
