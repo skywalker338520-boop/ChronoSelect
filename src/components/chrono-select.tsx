@@ -634,7 +634,7 @@ export default function ChronoSelect() {
       rouletteTimers.current.forEach(timer => clearTimeout(timer));
       rouletteTimers.current = [];
     }
-  }, [gameState, players, playGunshotSound, playClickSound, resetGame]);
+  }, [gameState, playGunshotSound, playClickSound, resetGame]);
 
   return (
     <div 
