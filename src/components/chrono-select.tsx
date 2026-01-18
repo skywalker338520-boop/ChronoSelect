@@ -121,8 +121,6 @@ export default function ChronoSelect() {
                 updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
             } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
                 racingCount++;
-                // Race movement
-                updatedPlayer.y -= updatedPlayer.vy;
                 
                 // Add more dramatic, less frequent speed changes for a "horse race" effect
                 if (Math.random() < 0.05) { // 5% chance each frame to change speed
@@ -133,12 +131,25 @@ export default function ChronoSelect() {
                 updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 4));
 
 
-                // Check for finish
-                if (updatedPlayer.y <= updatedPlayer.size / 2) {
-                    updatedPlayer.y = updatedPlayer.size / 2;
-                    updatedPlayer.vy = 0;
-                    finishersThisFrame.push(updatedPlayer); // Add to list to be ranked later
+                if (updatedPlayer.raceDirection === 'up') {
+                    updatedPlayer.y -= updatedPlayer.vy;
+                    // Check for reaching the top
+                    if (updatedPlayer.y <= updatedPlayer.size / 2) {
+                        updatedPlayer.y = updatedPlayer.size / 2;
+                        updatedPlayer.raceDirection = 'down';
+                    }
+                } else { // raceDirection is 'down'
+                    updatedPlayer.y += updatedPlayer.vy;
+                    
+                    // Check for finish at the bottom
+                    const canvas = canvasRef.current;
+                    if (canvas && updatedPlayer.y >= canvas.height - (updatedPlayer.size / 2)) {
+                        updatedPlayer.y = canvas.height - (updatedPlayer.size / 2);
+                        updatedPlayer.vy = 0;
+                        finishersThisFrame.push(updatedPlayer); // Finish race
+                    }
                 }
+
             } else {
                 // Normal breathing for IDLE, WAITING, COUNTDOWN, and non-racing modes.
                 const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
@@ -154,8 +165,8 @@ export default function ChronoSelect() {
 
         // Sort and rank any players that finished this frame
         if (finishersThisFrame.length > 0) {
-            // Sort by who crossed the line furthest (lowest y)
-            finishersThisFrame.sort((a, b) => a.y - b.y);
+            // Sort by who crossed the line furthest (highest y)
+            finishersThisFrame.sort((a, b) => b.y - a.y);
 
             let rankToAssign = finishedRacerCount + 1;
             for (const finisher of finishersThisFrame) {
@@ -274,6 +285,7 @@ export default function ChronoSelect() {
                       baseSize: BASE_CIRCLE_SIZE,
                       animationPhase: Math.random() * Math.PI * 2,
                       vy: 0, rank: null,
+                      raceDirection: 'up',
                   });
                   return newPlayers;
               });
@@ -314,6 +326,7 @@ export default function ChronoSelect() {
             baseSize: BASE_CIRCLE_SIZE,
             animationPhase: Math.random() * Math.PI * 2,
             vy: 0, rank: null,
+            raceDirection: 'up',
         });
 
         if (newPlayers.size > 0) setGameState('WAITING');
@@ -466,7 +479,7 @@ export default function ChronoSelect() {
             const lineupWidth = window.innerWidth * 0.8;
             const spacing = currentPlayers.size > 1 ? lineupWidth / (currentPlayers.size - 1) : 0;
             const startX = (window.innerWidth - lineupWidth) / 2;
-            const startY = window.innerHeight - BASE_CIRCLE_SIZE;
+            const startY = window.innerHeight - (BASE_CIRCLE_SIZE / 2);
 
             const newPlayers = new Map(currentPlayers);
             Array.from(newPlayers.values()).forEach((p, index) => {

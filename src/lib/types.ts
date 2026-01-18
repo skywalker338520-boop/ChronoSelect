@@ -15,4 +15,5 @@ export type Player = {
   // New properties for Race mode
   vy: number; // vertical velocity
   rank: number | null;
+  raceDirection: 'up' | 'down';
 };
