@@ -212,12 +212,10 @@ export default function ChronoSelect() {
         if (player.rank !== null && (gameState === 'RACING' || gameState === 'RACE_FINISH')) {
             ctx.save();
             ctx.fillStyle = 'white';
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 4;
-            ctx.font = `bold ${player.size * 0.5}px sans-serif`;
+            const fontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+            ctx.font = `bold ${player.size * 0.6}px ${fontStack}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.strokeText(String(player.rank), player.x, player.y);
             ctx.fillText(String(player.rank), player.x, player.y);
             ctx.restore();
         }
@@ -633,7 +631,7 @@ export default function ChronoSelect() {
 
         {(gameState === 'RACE_READY') && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-white text-6xl font-headline animate-pulse">Ready...</p>
+                <p className="text-white text-4xl font-headline">Ready...</p>
             </div>
         )}
     </div>
