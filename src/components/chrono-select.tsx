@@ -180,7 +180,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.01;
+                    updatedPlayer.size *= 1.005;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -743,13 +743,6 @@ export default function ChronoSelect() {
             </div>
         )}
 
-        {gameMode === 'russianRoulette' && gameState === 'ROULETTE_SPINNING' && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-white/50 text-2xl font-headline animate-pulse">Tap to Trigger</p>
-            </div>
-        )}
     </div>
   );
 }
-
-    
