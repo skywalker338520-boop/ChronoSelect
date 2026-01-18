@@ -183,7 +183,7 @@ export default function ChronoSelect() {
             newPlayers.forEach((p, id) => {
                 let updatedPlayer = {...p};
                 if (gameState === 'ROULETTE_GAMEOVER' && p.id === gameOverPlayerId.current) {
-                    updatedPlayer.size *= 1.02;
+                    updatedPlayer.size *= 1.03;
                 } else if(p.angle !== undefined) {
                     const currentAngle = p.angle + revolverAngle.current;
                     updatedPlayer.x = centerX + Math.cos(currentAngle) * radius;
@@ -748,7 +748,7 @@ export default function ChronoSelect() {
 
         {gameState === 'RACE_READY' && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-white text-lg font-headline animate-pulse">Ready...</p>
+                <p className="text-white text-4xl font-headline animate-pulse">Ready...</p>
             </div>
         )}
 
