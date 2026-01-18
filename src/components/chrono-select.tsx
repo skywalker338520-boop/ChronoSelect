@@ -78,6 +78,7 @@ export default function ChronoSelect() {
   const [interactionLocked, setInteractionLocked] = useState(false);
   const spinAngle = useRef(0);
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
@@ -169,7 +170,7 @@ export default function ChronoSelect() {
             
             if (gameState === 'ROULETTE_SPINNING' || gameState === 'ROULETTE_TRIGGERING') {
                 spinAngle.current += 0.01; // Controls how fast the speed changes
-                const baseSpeed = 0.0546;
+                const baseSpeed = 0.03;
                 const fluctuation = Math.sin(spinAngle.current) * (baseSpeed * 0.4);
                 const spinSpeed = baseSpeed + fluctuation;
 
@@ -748,7 +749,7 @@ export default function ChronoSelect() {
         <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
         <div className="absolute top-4 right-4 z-10 pointer-events-auto"
           onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
-          <Popover>
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Settings className="h-12 w-12 text-primary" />
@@ -757,7 +758,10 @@ export default function ChronoSelect() {
             </PopoverTrigger>
             <PopoverContent className="w-auto mr-4">
                <RadioGroup value={gameMode} 
-                  onValueChange={(value) => setGameMode(value as GameMode)}
+                  onValueChange={(value) => {
+                    setGameMode(value as GameMode);
+                    setPopoverOpen(false);
+                  }}
                   className="gap-4">
                   <Label className="flex items-center space-x-2 font-headline cursor-pointer">
                     <RadioGroupItem value="chooser" id="chooser-mode" />
