@@ -163,7 +163,7 @@ export default function ChronoSelect() {
             const radius = Math.min(centerX, centerY) * 0.4;
 
             if (gameState === 'ROULETTE_SPINNING') {
-                revolverAngle.current = (revolverAngle.current + 0.045) % (Math.PI * 2);
+                revolverAngle.current = (revolverAngle.current + 0.0225) % (Math.PI * 2);
             } else if (gameState === 'ROULETTE_TRIGGERING') {
                 const { startAngle, targetAngle, startTime } = decelerationData.current;
                 const duration = 200; // 200ms deceleration
@@ -212,16 +212,27 @@ export default function ChronoSelect() {
                     updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
                 } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
                     if (Math.random() < 0.05) {
-                        const speedBoost = (Math.random() - 0.45) * 10; // Increased fluctuation
+                        const speedBoost = (Math.random() - 0.45) * 5;
                         updatedPlayer.vy += speedBoost;
                     }
-                    updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 15)); // Increased max speed
+                    updatedPlayer.vy = Math.max(1, Math.min(updatedPlayer.vy, 10));
 
-                    updatedPlayer.y -= updatedPlayer.vy;
-                    if (canvas && updatedPlayer.y <= (updatedPlayer.size / 2)) {
-                        updatedPlayer.y = updatedPlayer.size / 2;
-                        updatedPlayer.vy = 0;
-                        finishersThisFrame.push(updatedPlayer);
+                    if (updatedPlayer.raceDirection === 'up') {
+                        updatedPlayer.y -= updatedPlayer.vy;
+                        if (canvas && updatedPlayer.y <= (updatedPlayer.size / 2)) {
+                            updatedPlayer.y = updatedPlayer.size / 2;
+                            updatedPlayer.raceDirection = 'down';
+                        }
+                    } else { // raceDirection is 'down'
+                        updatedPlayer.y += updatedPlayer.vy;
+                        if(canvas) {
+                            const startY = canvas.height - (updatedPlayer.baseSize / 2);
+                            if (updatedPlayer.y >= startY) {
+                                updatedPlayer.y = startY;
+                                updatedPlayer.vy = 0;
+                                finishersThisFrame.push(updatedPlayer);
+                            }
+                        }
                     }
                 } else {
                     const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
@@ -744,5 +755,3 @@ export default function ChronoSelect() {
     </div>
   );
 }
-
-    
