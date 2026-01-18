@@ -13,8 +13,26 @@ export default function ServiceWorkerRegistrar() {
           .register('/sw.js')
           .then((registration) => {
             console.log('SW registered: ', registration);
-            // You can add logic here to notify the user
-            // that the app is ready for offline use.
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      toast({
+                        title: 'Update Available',
+                        description: 'A new version is ready. Close and reopen the app to apply it.',
+                      });
+                    } else {
+                      toast({
+                        title: 'App ready for offline use',
+                        description: 'This app will now work even without an internet connection.',
+                      });
+                    }
+                  }
+                };
+              }
+            };
           })
           .catch((registrationError) => {
             console.log('SW registration failed: ', registrationError);
