@@ -1,1 +1,0 @@
-entrypoint: echo "Static site build. No server to start."
