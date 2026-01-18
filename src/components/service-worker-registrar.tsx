@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from 'react';
@@ -31,11 +32,6 @@ export default function ServiceWorkerRegistrar() {
           })
           .catch((registrationError) => {
             console.log('SW registration failed: ', registrationError);
-            toast({
-                title: 'Offline Mode Failed',
-                description: 'Could not enable offline capabilities.',
-                variant: 'destructive',
-            })
           });
       });
     }
