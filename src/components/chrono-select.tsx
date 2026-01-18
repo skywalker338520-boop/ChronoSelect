@@ -74,6 +74,7 @@ export default function ChronoSelect() {
   const [showInactivePrompt, setShowInactivePrompt] = useState(false);
   const revolverAngle = useRef(0);
   const [interactionLocked, setInteractionLocked] = useState(false);
+  const spinAngle = useRef(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
@@ -131,6 +132,7 @@ export default function ChronoSelect() {
     setShowInactivePrompt(false);
     setInteractionLocked(false);
     gameOverPlayerId.current = null;
+    spinAngle.current = 0;
     if (countdownIntervalId.current) clearInterval(countdownIntervalId.current);
     if (inactiveTimerId.current) clearTimeout(inactiveTimerId.current);
     if (preCountdownTimerId.current) clearTimeout(preCountdownTimerId.current);
@@ -161,21 +163,26 @@ export default function ChronoSelect() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const radius = Math.min(centerX, centerY) * 0.4;
-            const spinSpeed = 0.0225 * 0.5 * 0.5;
+            
+            if (gameState === 'ROULETTE_SPINNING' || gameState === 'ROULETTE_TRIGGERING') {
+                spinAngle.current += 0.01; // Controls how fast the speed changes
+                const baseSpeed = 0.005625;
+                const fluctuation = Math.sin(spinAngle.current) * (baseSpeed * 0.4);
+                const spinSpeed = baseSpeed + fluctuation;
 
-            if (gameState === 'ROULETTE_SPINNING') {
-                revolverAngle.current += spinSpeed;
-            } else if (gameState === 'ROULETTE_TRIGGERING') {
-                const { targetAngle } = decelerationData.current;
-                const nextAngle = revolverAngle.current + spinSpeed;
-
-                if (nextAngle >= targetAngle) {
-                    revolverAngle.current = targetAngle;
-                    if (!hasFiredRef.current) {
-                        setGameState('ROULETTE_FIRING');
+                if (gameState === 'ROULETTE_TRIGGERING') {
+                    const { targetAngle } = decelerationData.current;
+                    const nextAngle = revolverAngle.current + spinSpeed;
+                    if (nextAngle >= targetAngle) {
+                        revolverAngle.current = targetAngle;
+                        if (!hasFiredRef.current) {
+                            setGameState('ROULETTE_FIRING');
+                        }
+                    } else {
+                        revolverAngle.current = nextAngle;
                     }
-                } else {
-                    revolverAngle.current = nextAngle;
+                } else { // ROULETTE_SPINNING
+                    revolverAngle.current += spinSpeed;
                 }
             }
             
