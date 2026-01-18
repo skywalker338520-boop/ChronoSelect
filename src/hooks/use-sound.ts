@@ -1,22 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from 'react';
-import * as Tone from 'tone';
+import type * as Tone from 'tone'; // Import types only
+
+type Synths = {
+  tick: Tone.Synth,
+  ding: Tone.Synth,
+  whoosh: Tone.NoiseSynth,
+  loser: Tone.NoiseSynth,
+};
 
 export function useSound() {
+  const ToneRef = useRef<typeof Tone | null>(null);
+  const synths = useRef<Synths | null>(null);
   const isInitialized = useRef(false);
-  const synths = useRef<{
-    tick: Tone.Synth,
-    ding: Tone.Synth,
-    whoosh: Tone.NoiseSynth,
-    loser: Tone.NoiseSynth,
-  } | null>(null);
   const lastTickTime = useRef(0);
 
   useEffect(() => {
-    const initAudio = async () => {
-      if (isInitialized.current || Tone.context.state === 'running') return;
-      
+    const initOnUserAction = async () => {
+      // Ensure Tone is loaded
+      if (!ToneRef.current) {
+        ToneRef.current = await import('tone');
+      }
+      const Tone = ToneRef.current;
+
+      if (isInitialized.current || Tone.context.state === 'running') {
+        return;
+      }
+
       try {
         await Tone.start();
         
@@ -45,28 +56,25 @@ export function useSound() {
       }
     };
 
-    window.addEventListener('touchstart', initAudio, { once: true });
-    window.addEventListener('mousedown', initAudio, { once: true });
+    // This code runs only in the browser.
+    window.addEventListener('touchstart', initOnUserAction, { once: true });
+    window.addEventListener('mousedown', initOnUserAction, { once: true });
 
     return () => {
-      window.removeEventListener('touchstart', initAudio);
-      window.removeEventListener('mousedown', initAudio);
-      if(synths.current) {
-        synths.current.tick.dispose();
-        synths.current.ding.dispose();
-        synths.current.whoosh.dispose();
-        synths.current.loser.dispose();
+      window.removeEventListener('touchstart', initOnUserAction);
+      window.removeEventListener('mousedown', initOnUserAction);
+      if (synths.current) {
+        Object.values(synths.current).forEach(synth => synth.dispose());
       }
     };
   }, []);
 
   const playTick = useCallback((rate: number) => {
-    if (!synths.current) return;
+    const Tone = ToneRef.current;
+    if (!synths.current || !Tone) return;
     
     let scheduledTime = Tone.now();
     if (scheduledTime <= lastTickTime.current) {
-        // Ensure scheduledTime is always greater than the last one.
-        // A small offset like 0.01 should be enough.
         scheduledTime = lastTickTime.current + 0.01;
     }
     lastTickTime.current = scheduledTime;
@@ -76,14 +84,16 @@ export function useSound() {
   }, []);
 
   const playWinnerSound = useCallback(() => {
-    if (!synths.current) return;
+    const Tone = ToneRef.current;
+    if (!synths.current || !Tone) return;
     const now = Tone.now();
     synths.current.whoosh.triggerAttackRelease('0.5n', now);
     synths.current.ding.triggerAttackRelease('C6', '0.5n', now + 0.2);
   }, []);
 
   const playTeamSplitSound = useCallback(() => {
-    if (!synths.current) return;
+    const Tone = ToneRef.current;
+    if (!synths.current || !Tone) return;
     const now = Tone.now();
     synths.current.whoosh.triggerAttackRelease('0.3n', now);
     synths.current.ding.triggerAttackRelease('G4', '0.2n', now + 0.1);
@@ -91,7 +101,8 @@ export function useSound() {
   }, []);
   
   const playLoserSound = useCallback(() => {
-    if (!synths.current) return;
+    const Tone = ToneRef.current;
+    if (!synths.current || !Tone) return;
     synths.current.loser.triggerAttackRelease('0.6n', Tone.now());
   }, []);
 
