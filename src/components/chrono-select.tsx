@@ -161,22 +161,21 @@ export default function ChronoSelect() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const radius = Math.min(centerX, centerY) * 0.4;
+            const spinSpeed = 0.0225 * 0.5 * 0.5;
 
             if (gameState === 'ROULETTE_SPINNING') {
-                revolverAngle.current = (revolverAngle.current + 0.0225 * 0.5 * 0.5) % (Math.PI * 2);
+                revolverAngle.current += spinSpeed;
             } else if (gameState === 'ROULETTE_TRIGGERING') {
-                const { startAngle, targetAngle, startTime } = decelerationData.current;
-                const duration = 500; // 500ms deceleration
-                const elapsed = performance.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // Ease-out cubic curve
-                const easedProgress = 1 - Math.pow(1 - progress, 3);
+                const { targetAngle } = decelerationData.current;
+                const nextAngle = revolverAngle.current + spinSpeed;
 
-                revolverAngle.current = startAngle + (targetAngle - startAngle) * easedProgress;
-
-                if (progress >= 1 && !hasFiredRef.current) {
-                    setGameState('ROULETTE_FIRING');
+                if (nextAngle >= targetAngle) {
+                    revolverAngle.current = targetAngle;
+                    if (!hasFiredRef.current) {
+                        setGameState('ROULETTE_FIRING');
+                    }
+                } else {
+                    revolverAngle.current = nextAngle;
                 }
             }
             
