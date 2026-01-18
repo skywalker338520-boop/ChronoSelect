@@ -166,7 +166,7 @@ export default function ChronoSelect() {
                 revolverAngle.current = (revolverAngle.current + 0.0225 * 0.5 * 0.5) % (Math.PI * 2);
             } else if (gameState === 'ROULETTE_TRIGGERING') {
                 const { startAngle, targetAngle, startTime } = decelerationData.current;
-                const duration = 200; // 200ms deceleration
+                const duration = 500; // 500ms deceleration
                 const elapsed = performance.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 
