@@ -16,7 +16,7 @@ const COUNTDOWN_SECONDS = 3;
 const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
 const RACE_START_DELAY = 3000; // Time to wait for new players
 const RACE_READY_DELAY = 2000; // Time before race starts
-const PLAYER_CREATION_DELAY = 500; // Minimal contact time to create a player in race mode
+const PLAYER_CREATION_DELAY = 200; // Minimal contact time to create a player in race mode
 
 const BASE_CIRCLE_SIZE = 130.345;
 
@@ -101,15 +101,14 @@ export default function ChronoSelect() {
 
   // Animation loop for STATE UPDATES
   const animate = useCallback(() => {
-    let finishedRacerCount = 0;
-
     setPlayers(currentPlayers => {
-        let racingCount = 0;
+        let finishedRacerCount = 0;
         currentPlayers.forEach(p => {
             if (p.rank !== null) finishedRacerCount++;
         });
 
         const newPlayers = new Map(currentPlayers);
+        let racingCount = 0;
         const finishersThisFrame: Player[] = [];
 
         newPlayers.forEach((player, id) => {
@@ -149,17 +148,15 @@ export default function ChronoSelect() {
 
         // Sort and rank any players that finished this frame
         if (finishersThisFrame.length > 0) {
-            let rankToAssign = finishedRacerCount + 1;
             // Sort by who crossed the line furthest (lowest y)
             finishersThisFrame.sort((a, b) => a.y - b.y);
 
+            let rankToAssign = finishedRacerCount + 1;
             for (const finisher of finishersThisFrame) {
-                if (newPlayers.has(finisher.id)) {
-                    const playerToUpdate = newPlayers.get(finisher.id)!;
-                    if (playerToUpdate.rank === null) { // Ensure we only rank once
-                        playerToUpdate.rank = rankToAssign++;
-                        newPlayers.set(finisher.id, playerToUpdate);
-                    }
+                const playerToUpdate = newPlayers.get(finisher.id);
+                if (playerToUpdate && playerToUpdate.rank === null) { // Ensure we only rank once
+                    playerToUpdate.rank = rankToAssign++;
+                    newPlayers.set(finisher.id, playerToUpdate);
                 }
             }
             playTick(2);
