@@ -163,7 +163,7 @@ export default function ChronoSelect() {
             const radius = Math.min(centerX, centerY) * 0.4;
 
             if (gameState === 'ROULETTE_SPINNING') {
-                revolverAngle.current = (revolverAngle.current + 0.09) % (Math.PI * 2);
+                revolverAngle.current = (revolverAngle.current + 0.045) % (Math.PI * 2);
             } else if (gameState === 'ROULETTE_TRIGGERING') {
                 const { startAngle, targetAngle, startTime } = decelerationData.current;
                 const duration = 200; // 200ms deceleration
@@ -200,7 +200,6 @@ export default function ChronoSelect() {
             playerArray.forEach(p => { if (p.rank !== null) finishedRacerCount++; });
 
             const newPlayers = new Map(currentPlayers);
-            let racingCount = 0;
             const finishersThisFrame: Player[] = [];
 
             newPlayers.forEach((player, id) => {
@@ -212,26 +211,17 @@ export default function ChronoSelect() {
                     updatedPlayer.size *= 0.9;
                     updatedPlayer.opacity = Math.max(0, player.opacity - 0.05);
                 } else if (gameState === 'RACING' && updatedPlayer.rank === null) {
-                    racingCount++;
                     if (Math.random() < 0.05) {
                         const speedBoost = (Math.random() - 0.45) * 10; // Increased fluctuation
                         updatedPlayer.vy += speedBoost;
                     }
                     updatedPlayer.vy = Math.max(0.1, Math.min(updatedPlayer.vy, 15)); // Increased max speed
 
-                    if (updatedPlayer.raceDirection === 'up') {
-                        updatedPlayer.y -= updatedPlayer.vy;
-                        if (updatedPlayer.y <= updatedPlayer.size / 2) {
-                            updatedPlayer.y = updatedPlayer.size / 2;
-                            updatedPlayer.raceDirection = 'down';
-                        }
-                    } else {
-                        updatedPlayer.y += updatedPlayer.vy;
-                        if (canvas && updatedPlayer.y >= canvas.height - (updatedPlayer.size / 2)) {
-                            updatedPlayer.y = canvas.height - (updatedPlayer.size / 2);
-                            updatedPlayer.vy = 0;
-                            finishersThisFrame.push(updatedPlayer);
-                        }
+                    updatedPlayer.y -= updatedPlayer.vy;
+                    if (canvas && updatedPlayer.y <= (updatedPlayer.size / 2)) {
+                        updatedPlayer.y = updatedPlayer.size / 2;
+                        updatedPlayer.vy = 0;
+                        finishersThisFrame.push(updatedPlayer);
                     }
                 } else {
                     const speedMultiplier = gameState === 'COUNTDOWN' ? 3 : 1;
@@ -243,7 +233,7 @@ export default function ChronoSelect() {
             });
 
             if (finishersThisFrame.length > 0) {
-                finishersThisFrame.sort((a, b) => b.y - a.y);
+                finishersThisFrame.sort((a, b) => a.y - b.y);
                 let rankToAssign = finishedRacerCount + 1;
                 for (const finisher of finishersThisFrame) {
                     const playerToUpdate = newPlayers.get(finisher.id);
@@ -255,9 +245,15 @@ export default function ChronoSelect() {
                 playTick(2);
                 if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
             }
-            if (gameState === 'RACING' && racingCount > 0 && newPlayers.size > 0 && finishedRacerCount === newPlayers.size) {
-                setTimeout(() => setGameState('RACE_FINISH'), 500);
+
+            const totalPlayers = newPlayers.size;
+            if (totalPlayers > 0) {
+                const finishedPlayers = Array.from(newPlayers.values()).filter(p => p.rank !== null).length;
+                if (gameState === 'RACING' && finishedPlayers === totalPlayers) {
+                    setTimeout(() => setGameState('RACE_FINISH'), 500);
+                }
             }
+            
             return newPlayers;
         });
     }
