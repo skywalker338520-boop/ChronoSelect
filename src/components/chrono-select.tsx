@@ -14,11 +14,11 @@ import { cn } from '@/lib/utils';
 
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
-const COUNTDOWN_SECONDS = 3;
-const PRE_COUNTDOWN_DELAY = 2000; // Delay before countdown starts
+const COUNTDOWN_SECONDS = 2;
+const PRE_COUNTDOWN_DELAY = 1000; // Delay before countdown starts
 const RACE_START_DELAY = 3000; // Time to wait for new players
 const RACE_READY_DELAY = 2000; // Time before race starts
-const PLAYER_CREATION_DELAY = 200; // Minimal contact time to create a player in race mode
+const PLAYER_CREATION_DELAY = 100; // Minimal contact time to create a player in race mode
 
 const BASE_CIRCLE_SIZE = 130.345;
 const ROULETTE_CHAMBERS = 6;
@@ -170,7 +170,7 @@ export default function ChronoSelect() {
             
             if (gameState === 'ROULETTE_SPINNING' || gameState === 'ROULETTE_TRIGGERING') {
                 spinAngle.current += 0.01; // Controls how fast the speed changes
-                const baseSpeed = 0.02;
+                const baseSpeed = 0.03;
                 const fluctuation = Math.sin(spinAngle.current) * (baseSpeed * 0.4);
                 const spinSpeed = baseSpeed + fluctuation;
 
@@ -376,13 +376,13 @@ export default function ChronoSelect() {
   }, [animate]);
 
   const handlePointerDown = useCallback((x: number, y: number, id: number) => {
-    // Handle game over reset first, ignoring interaction lock
+    if (interactionLocked) return;
+
+    // Handle game over reset first
     if (gameMode === 'russianRoulette' && gameState === 'ROULETTE_GAMEOVER') {
         resetGame();
         return;
     }
-
-    if (interactionLocked) return;
 
     if (gameMode === 'russianRoulette') {
         if (gameState === 'ROULETTE_SPINNING') {
@@ -495,11 +495,12 @@ export default function ChronoSelect() {
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
       if (gameMode === 'russianRoulette' && gameState === 'ROULETTE_GAMEOVER') {
+          if (interactionLocked) return;
           resetGame();
       } else if(players.size > 0) {
           resetGame();
       }
-  }, [resetGame, players.size, gameMode, gameState]);
+  }, [resetGame, players.size, gameMode, gameState, interactionLocked]);
 
   useEffect(() => {
     // This allows changing modes at any time, which will reset the game.
