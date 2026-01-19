@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 const MAX_TOUCHES = 10;
 const INACTIVITY_TIMEOUT = 10000;
 const COUNTDOWN_SECONDS = 2;
-const PRE_COUNTDOWN_DELAY = 1000; // Delay before countdown starts
+const PRE_COUNTDOWN_DELAY = 500; // Delay before countdown starts
 const RACE_START_DELAY = 3000; // Time to wait for new players
 const RACE_READY_DELAY = 2000; // Time before race starts
 const PLAYER_CREATION_DELAY = 100; // Minimal contact time to create a player in race mode
@@ -170,7 +170,7 @@ export default function ChronoSelect() {
             
             if (gameState === 'ROULETTE_SPINNING' || gameState === 'ROULETTE_TRIGGERING') {
                 spinAngle.current += 0.01; // Controls how fast the speed changes
-                const baseSpeed = 0.03;
+                const baseSpeed = 0.04;
                 const fluctuation = Math.sin(spinAngle.current) * (baseSpeed * 0.4);
                 const spinSpeed = baseSpeed + fluctuation;
 
@@ -378,7 +378,6 @@ export default function ChronoSelect() {
   const handlePointerDown = useCallback((x: number, y: number, id: number) => {
     if (interactionLocked) return;
 
-    // Handle game over reset first
     if (gameMode === 'russianRoulette' && gameState === 'ROULETTE_GAMEOVER') {
         resetGame();
         return;
@@ -386,8 +385,57 @@ export default function ChronoSelect() {
 
     if (gameMode === 'russianRoulette') {
         if (gameState === 'ROULETTE_SPINNING') {
-            decelerationData.current.startTime = performance.now();
-            hasFiredRef.current = false; // Reset the guard flag
+            setInteractionLocked(true);
+            hasFiredRef.current = false;
+
+            const sightAngle = -Math.PI / 2;
+            let nextChamber: Player | null = null;
+            let minPositiveDiff = Infinity;
+            let finalRevolverAngle = revolverAngle.current;
+
+            players.forEach(p => {
+                if (p.angle === undefined) return;
+                const effectiveAngle = (p.angle + revolverAngle.current) % (2 * Math.PI);
+                const isInLeftHemisphere = effectiveAngle > Math.PI / 2 && effectiveAngle < (1.5 * Math.PI);
+                if (isInLeftHemisphere) {
+                    let diff = sightAngle - effectiveAngle;
+                    if (diff < 0) diff += 2 * Math.PI;
+                    if (diff < minPositiveDiff) {
+                        minPositiveDiff = diff;
+                        nextChamber = p;
+                        finalRevolverAngle = revolverAngle.current + diff;
+                    }
+                }
+            });
+
+            if (!nextChamber) {
+                minPositiveDiff = Infinity;
+                players.forEach(p => {
+                    if (p.angle === undefined) return;
+                    const effectiveAngle = (p.angle + revolverAngle.current) % (2 * Math.PI);
+                    let diff = sightAngle - effectiveAngle;
+                    if (diff <= 0) diff += 2 * Math.PI;
+                    if (diff < minPositiveDiff) {
+                        minPositiveDiff = diff;
+                        nextChamber = p;
+                        finalRevolverAngle = revolverAngle.current + diff;
+                    }
+                });
+            }
+
+            const closestChamber = nextChamber;
+            if (!closestChamber) {
+                setInteractionLocked(false);
+                return;
+            }
+
+            decelerationData.current = {
+                ...decelerationData.current,
+                startAngle: revolverAngle.current,
+                targetAngle: finalRevolverAngle,
+                chamber: closestChamber
+            };
+
             setGameState('ROULETTE_TRIGGERING');
         }
         return;
@@ -454,7 +502,7 @@ export default function ChronoSelect() {
         if (newPlayers.size > 0) setGameState('WAITING');
         return newPlayers;
     });
-  }, [gameState, resetGame, gameMode, interactionLocked]);
+  }, [gameState, resetGame, gameMode, interactionLocked, players]);
 
   const handlePointerMove = useCallback((x: number, y: number, id: number) => {
     if (gameMode === 'race' || gameMode === 'russianRoulette') return;
@@ -618,77 +666,6 @@ export default function ChronoSelect() {
 
   // Russian Roulette Logic
   useEffect(() => {
-    if (gameState === 'ROULETTE_TRIGGERING' && prevGameState !== 'ROULETTE_TRIGGERING') {
-      setInteractionLocked(true);
-      
-      const sightAngle = -Math.PI / 2; // Top of the circle
-      let nextChamber: Player | null = null;
-      let minPositiveDiff = Infinity;
-      let finalRevolverAngle = revolverAngle.current;
-
-      // First, try to find the next chamber from the left hemisphere
-      players.forEach(p => {
-          if (p.angle === undefined) return;
-          
-          const effectiveAngle = (p.angle + revolverAngle.current) % (2 * Math.PI);
-
-          // Check if the chamber is currently in the left-hand side of its rotation
-          const isInLeftHemisphere = effectiveAngle > Math.PI / 2 && effectiveAngle < (1.5 * Math.PI);
-          
-          if (isInLeftHemisphere) {
-              // Calculate the forward (CCW) angular distance to the sight
-              let diff = sightAngle - effectiveAngle;
-              if (diff < 0) {
-                  diff += 2 * Math.PI;
-              }
-
-              if (diff < minPositiveDiff) {
-                  minPositiveDiff = diff;
-                  nextChamber = p;
-                  finalRevolverAngle = revolverAngle.current + diff;
-              }
-          }
-      });
-      
-      // If no chamber was found in the left hemisphere (e.g. all on the right),
-      // find the overall next chamber that will reach the sight.
-      if (!nextChamber) {
-        minPositiveDiff = Infinity; // Reset for the fallback search
-        players.forEach(p => {
-            if (p.angle === undefined) return;
-            const effectiveAngle = (p.angle + revolverAngle.current) % (2 * Math.PI);
-            
-            let diff = sightAngle - effectiveAngle;
-            if (diff <= 0) { // use <= to include a chamber that is exactly at the sight
-                diff += 2 * Math.PI;
-            }
-            if (diff < minPositiveDiff) {
-                minPositiveDiff = diff;
-                nextChamber = p;
-                finalRevolverAngle = revolverAngle.current + diff;
-            }
-        });
-      }
-
-      const closestChamber = nextChamber;
-      
-      if (!closestChamber) { 
-          setInteractionLocked(false); 
-          setGameState('ROULETTE_SPINNING'); 
-          return; 
-      }
-      
-      decelerationData.current = {
-          ...decelerationData.current,
-          startAngle: revolverAngle.current,
-          targetAngle: finalRevolverAngle,
-          chamber: closestChamber
-      };
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState, prevGameState, players]);
-
-  useEffect(() => {
     rouletteTimers.current.forEach(timer => clearTimeout(timer));
     rouletteTimers.current = [];
 
@@ -739,11 +716,15 @@ export default function ChronoSelect() {
     if (gameState === 'ROULETTE_GAMEOVER') {
       const unlockTimer = setTimeout(() => {
         setInteractionLocked(false);
-      }, 1000); // 1 second delay
+      }, 500);
 
-      return () => clearTimeout(unlockTimer);
+      const resetTimeout = setTimeout(resetGame, 10000);
+      return () => {
+        clearTimeout(unlockTimer);
+        clearTimeout(resetTimeout);
+      };
     }
-  }, [gameState]);
+  }, [gameState, resetGame]);
 
   return (
     <div 
