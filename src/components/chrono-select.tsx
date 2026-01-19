@@ -706,8 +706,6 @@ export default function ChronoSelect() {
           playGunshotSound(); if (navigator.vibrate) navigator.vibrate(500);
           gameOverPlayerId.current = chamber.id;
           setGameState('ROULETTE_GAMEOVER');
-          const unlockTimer = setTimeout(() => setInteractionLocked(false), 2000);
-          rouletteTimers.current.push(unlockTimer);
       } else {
           playClickSound(); if (navigator.vibrate) navigator.vibrate(50);
           setPlayers(current => {
@@ -718,8 +716,6 @@ export default function ChronoSelect() {
                       playGunshotSound(); if (navigator.vibrate) navigator.vibrate(500);
                       gameOverPlayerId.current = Array.from(newPlayers.values())[0].id;
                       setGameState('ROULETTE_GAMEOVER');
-                      const unlockTimer = setTimeout(() => setInteractionLocked(false), 2000);
-                      rouletteTimers.current.push(unlockTimer);
                   }, 500);
                   rouletteTimers.current.push(autoLoseTimer);
               }
@@ -738,6 +734,16 @@ export default function ChronoSelect() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, playGunshotSound, playClickSound]);
+
+  useEffect(() => {
+    if (gameState === 'ROULETTE_GAMEOVER') {
+      const unlockTimer = setTimeout(() => {
+        setInteractionLocked(false);
+      }, 1000); // 1 second delay
+
+      return () => clearTimeout(unlockTimer);
+    }
+  }, [gameState]);
 
   return (
     <div 
